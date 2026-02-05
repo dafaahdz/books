@@ -9,10 +9,12 @@ use CodeIgniter\HTTP\ResponseInterface;
 class GenreController extends BaseController
 {
     protected $genre;
+    protected $db;
 
     public function __construct()
     {
         $this->genre = new GenreModel();
+        $this->db = \Config\Database::connect();
     }
 
     public function list()
@@ -22,6 +24,31 @@ class GenreController extends BaseController
                 ->findAll();
 
         return $this->response->setJSON($genres);
+    }
+
+    public function search()
+    {
+        $term = $this->request->getGet('term');
+
+        $builder = $this->db->table('genres')
+                    ->select('id, name');
+
+        if(!empty($term)) {
+            $builder->like('name', $term);
+        }
+
+        $result = $builder->get()->getResultArray();
+
+        $data = [];
+
+        foreach($result as $row) {
+            $data[] = [
+                'id' => $row['id'],
+                'text' => $row['name']
+            ];
+        }
+
+        return $this->response->setJSON($data);
     }
 
 

@@ -9,6 +9,13 @@ class BookModel extends Model
     protected $table = 'books';
     protected $allowedFields = ['title', 'author', 'genre_id', 'price'];
 
+    protected $validationRules = [
+        'title' => 'required|min_length[3]|max_length[255]',
+        'author' => 'required|min_length[2]|max_length[255]',
+        'genre_id' => 'required|is_natural_no_zero',
+        'price' => 'required|numeric|greater_than[0]',
+    ];
+
     private function baseQuery()
     {
         return $this->db->table('books b')
@@ -16,7 +23,7 @@ class BookModel extends Model
             ->join('genres g', 'g.id = b.genre_id');
     }
 
-    public function getDatatables($start, $length, $search, $genreId = null)
+    public function getDatatables($start, $length, $search, $genreId = null, $orderColumn, $orderDir)
     {
         $builder = $this->baseQuery();
 
@@ -31,6 +38,8 @@ class BookModel extends Model
         if($genreId) {
             $builder->where('b.genre_id', $genreId);
         }
+
+        $builder->orderBy($orderColumn, $orderDir);
 
         return $builder
             ->limit($length, $start)

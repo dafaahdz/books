@@ -47,7 +47,10 @@
 
                             <div class="mb-3">
                                 <label class="form-label">Genre</label>
-                                <select name="genre_id" id="genreSelect" class="form-select" required></select>
+                                <br>
+                                <select name="genre_id" id="genreSelect" class="form-select w-100" required>
+                                    <option value=""></option>
+                                </select>
                             </div>
 
                             <div class="mb-3">
@@ -70,7 +73,6 @@
                         <form action="<?= base_url('books/import-csv') ?>"
                               method="post"
                               enctype="multipart/form-data">
-                              <?= csrf_field() ?>
                               
 
                             <div class="mb-3">

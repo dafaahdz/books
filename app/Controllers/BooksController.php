@@ -2,9 +2,9 @@
 
 namespace App\Controllers;
 
+use App\Libraries\PDF;
 use App\Models\BookModel;
 use App\Models\GenreModel;
-use Fpdf\Fpdf;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
@@ -37,13 +37,19 @@ class BooksController extends BaseController
             ], true);
         }
 
-
-        $this->book->insert([
+        $data = [
             'title'  => $this->request->getPost('title'),
             'author' => $this->request->getPost('author'),
             'price'  => $this->request->getPost('price'),
             'genre_id'  => $genreId
-        ]);
+        ];
+
+        if(!$this->book->validate($data)) {
+            return $this->response->setJSON(['status' => false]);
+        }
+
+
+        $this->book->insert($data);
 
         return $this->response->setJSON(['status' => true]);
     }
@@ -58,8 +64,19 @@ class BooksController extends BaseController
         $length = $request->getPost('length');
         $search = $request->getPost('search')['value'];
         $genreId = $request->getPost('genre_id');
+        $orderColumnIndex = $request->getPost('order')[0]['column'] ?? 0;
+        $orderDir = $request->getPost('order')[0]['dir'] ?? 'asc';
 
-        $data = $this->book->getDatatables($start, $length, $search, $genreId);
+        $columnMap = [
+            0 => 'b.title',
+            1 => 'b.author',
+            2 => 'g.name',
+            3 => 'b.price',
+        ];
+
+        $orderColumn = $columnMap[$orderColumnIndex] ?? 'b.title';
+
+        $data = $this->book->getDatatables($start, $length, $search, $genreId, $orderColumn, $orderDir);
 
         $response = [
             "draw" => $draw,
@@ -73,9 +90,14 @@ class BooksController extends BaseController
 
     public function show($id)
     {
-        return $this->response->setJSON(
-            $this->book->find($id)
-        );
+        $book = $this->db->table('books b')
+                ->select('b.*, g.name AS genre_name ')
+                ->join('genres g', 'g.id = b.genre_id', 'left')
+                ->where('b.id', $id)
+                ->get()
+                ->getRowArray();
+
+        return $this->response->setJSON($book);
     }
 
     public function exportPdf()
@@ -93,7 +115,7 @@ class BooksController extends BaseController
 
         $books = $builder->get()->getResultArray();
 
-        $pdf = new Fpdf('P', 'mm', 'A4');
+        $pdf = new PDF('P', 'mm', 'A4');
         $pdf->AddPage();
 
 
@@ -177,27 +199,7 @@ class BooksController extends BaseController
         );
 
         $pdf->Ln(5);
-
-
-        $pdf->SetFont('Arial', 'B', 10);
-        $pdf->Cell(10,8,'No',1,0,'C');
-        $pdf->Cell(60,8,'Judul Buku',1,0,'C');
-        $pdf->Cell(60,8,'Penulis',1,0,'C');
-        $pdf->Cell(40,8,'Genre',1,0,'C');
-        $pdf->Cell(20,8,'Harga',1,0,'C');
-        $pdf->Ln();
-
-        $pdf->SetFont('Arial', '', 10);
-        $no = 1;
-
-        foreach ($books as $b) {
-            $pdf->Cell(10,8,$no++,1,0,'C');
-            $pdf->Cell(60,8,$b['title'],1,0);
-            $pdf->Cell(60,8,$b['author'],1,0);
-            $pdf->Cell(40,8,$b['genre'],1,0);
-            $pdf->Cell(20,8,number_format($b['price'],0,',','.'),1,0,'R');
-            $pdf->Ln();
-        }
+        $pdf->BooksTable($books);
 
 
         $pdf->Ln(5);
@@ -406,7 +408,7 @@ class BooksController extends BaseController
 
             $batch[] = [
                 'title'     => trim($title),
-                'author'    => trim($title),
+                'author'    => trim($author),
                 'genre_id'    => $genreId,
                 'price'    => (int) $price,
             ];
@@ -460,6 +462,150 @@ class BooksController extends BaseController
         );
 
         return $this->response->setJSON(['status' => true]);
+    }
+
+
+    public function exportInit() 
+    {
+        $session = session();
+        $db = \Config\Database::connect();
+
+        if($session->get('export_running') === true) {
+            return $this->response
+                ->setStatusCode(429)
+                ->setJSON([
+                    'error' => 'Export already running'
+                ]);
+        }
+
+        $builder = $db->table('books');
+
+        $genreId = $this->request->getGet('genre_id');
+
+        if(!empty($genreId)) (
+            $builder->where('genre_id', $genreId)
+        );
+
+        $total = $builder->countAllResults();
+
+        $session->set([
+            'export_running' => true,
+            'export_offset' => 0,
+            'export_row' => 2,
+            'export_total' => $total,
+            'genre_id' => $genreId,
+            'export_done' => false
+        ]);
+
+        return $this->response->setJSON([
+            'status' => 'started',
+            'total' => $total
+        ]);
+    }
+
+    public function exportChunk()
+    {
+        $db = \Config\Database::connect();
+        $session = session();
+
+        $chunkSize = 500;
+        $offset = $session->get('export_offset');
+        $row = $session->get('export_row');
+        $genreId = $session->get('genre_id');
+        $total = $session->get('export_total');
+
+
+        $file = WRITEPATH . 'exports\books.xlsx';
+
+        if($offset === 0) {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->fromArray(
+                ['Title', 'Author', 'Genre', 'Price'],
+                null,
+                'A1'
+            );
+        } else {
+            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file);
+            $sheet = $spreadsheet->getActiveSheet();
+        }
+
+        $builder = $db->table('books b')
+                ->select('b.title, b.author, g.name AS genre, b.price')
+                ->join('genres g', 'g.id = b.genre_id')
+                ->orderBy('b.id ASC')
+                ->limit($chunkSize)
+                ->offset($offset);
+         
+
+        if(!empty($genreId)) {
+            $builder->where('b.genre_id', $genreId);
+        } 
+
+        $data = $builder->get()->getResultArray();
+        
+
+        if(empty($data)) {
+            $session->set('export_done', true);
+            $session->set('export_running', false);
+            return $this->response->setJSON(['done' => true]);
+        }
+
+        foreach($data as $book) {
+            $sheet->fromArray(
+                [$book['title'], $book['author'], $book['genre'], $book['price']],
+                null,
+                'A' . $row
+            );
+            $row++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $writer->save($file);
+
+        $session->set([
+            'export_offset' => $offset + $chunkSize,
+            'export_row' => $row
+        ]);
+
+        $processed = min(
+            $offset + count($data),
+            $total
+        );
+
+        return $this->response->setJSON([
+            'done' => false,
+            'processed' => $processed,
+            'total' => $total
+        ]);
+    }
+
+    public function exportDownload()
+    {
+        if(!is_dir(WRITEPATH . 'exports')) {
+            mkdir(WRITEPATH . 'exports', 0777, true);
+        }
+        return $this->response->download(
+            WRITEPATH . 'exports\books.xlsx',
+            null
+        );
+    }
+
+    public function exportReset()
+    {
+        $session = session();
+        $session->remove([
+            'export_running',
+            'export_offset',
+            'export_row',
+            'export_total',
+            'genre_id',
+            'export_done',
+        ]);
+
+        return $this->response->setJSON([
+            'status' => 'reset'
+        ]);
     }
 
 }
