@@ -119,7 +119,7 @@ $(function () {
             delay: 250,
             data: function (params) {
                 return {
-                    term: params.term
+                    term: params.term || ''
                 }
             },
             processResults: function(data) {
@@ -128,29 +128,11 @@ $(function () {
                 };
             }
         }
-    })
+    });
 
-    $('#genreSelect').select2({
-        dropdownParent: $('#bookModal'),
-        width: '100%',
-        placeholder: 'Pilih genre',
-        allowClear: true,
-        ajax: {
-            url: '<?= base_url('genres/search') ?>',
-            dataType: 'json',
-            delay: 250,
-            data: function (params) { 
-                return {
-                    term: params.term
-                }
-            },
-            processResults: function(data) {
-                return {
-                    results: data
-                };
-            }
-        }
-    })
+    $('#bookModal').on('hidden.bs.modal', function () {
+        $('#genreSelect').select2('destroy');
+    });
 
     table = $('#booksTable').DataTable({
         processing: true,
@@ -193,7 +175,6 @@ $(function () {
     $('#btnAdd').on('click', function () {
         $('#bookForm')[0].reset();
         $('#bookId').val('');
-        $('#genreSelect').val(null).trigger('change')
         $('#modalTitle').text('Tambah Buku');
         $('#bookModal').modal('show');
     });
@@ -202,32 +183,60 @@ $(function () {
         const id = $(this).data('id');
 
         $.get(`<?= base_url('books/show') ?>/${id}`, function (res) {
-
             $('#bookId').val(res.id);
             $('#title').val(res.title);
             $('#author').val(res.author);
             $('#price').val(res.price);
-
             $('#modalTitle').text('Edit Buku');
-            
 
-            $('#bookModal').one('shown.bs.modal', function () {
-
-                $('#genreSelect').val(null).trigger('change');
-
-                $('#genreSelect').select2('trigger', 'select', {
-                    data: {
-                        id: res.genre_id,
-                        text: res.genre_name
-                    }
-                });
-            });
-
-         
-
+            $('#bookModal').data('editGenreId', res.genre_id);
+            $('#bookModal').data('editGenreName', res.genre_name);
 
             $('#bookModal').modal('show');
         });
+    });
+
+    $('#bookModal').on('shown.bs.modal', function () {
+        const genreId = $(this).data('editGenreId');
+        const genreName = $(this).data('editGenreName');
+
+        $('#genreSelect').select2({
+            dropdownParent: $('#bookModal'),
+            width: '100%',
+            placeholder: 'Pilih genre',
+            allowClear: true,
+            ajax: {
+                url: '<?= base_url('genres/search') ?>',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) {
+                    return {
+                        term: params.term || ''
+                    }
+                },
+                processResults: function(data) {
+                    return {
+                        results: data
+                    };
+                }
+            }
+        });
+
+        if (genreId && genreName) {
+            const option = new Option(genreName, genreId, true, true);
+            $('#genreSelect').append(option).trigger('change');
+        }
+
+        $(this).removeData('editGenreId').removeData('editGenreName');
+    });
+
+    $('#bookModal').on('hidden.bs.modal', function () {
+        try {
+            if ($('#genreSelect').hasClass('select2-hidden-accessible')) {
+                $('#genreSelect').select2('destroy');
+            }
+        } catch (e) {}
+        $('#bookForm')[0].reset();
     });
 
 
