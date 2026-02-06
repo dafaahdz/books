@@ -9,12 +9,10 @@ use CodeIgniter\HTTP\ResponseInterface;
 class GenreController extends BaseController
 {
     protected $genre;
-    protected $db;
 
     public function __construct()
     {
         $this->genre = new GenreModel();
-        $this->db = \Config\Database::connect();
     }
 
     public function list()
@@ -30,18 +28,11 @@ class GenreController extends BaseController
     {
         $term = $this->request->getGet('term');
 
-        $builder = $this->db->table('genres')
-                    ->select('id, name');
-
-        if(!empty($term)) {
-            $builder->like('name', $term);
-        }
-
-        $result = $builder->get()->getResultArray();
+        $results = $this->genre->search($term);
 
         $data = [];
-
-        foreach($result as $row) {
+        
+        foreach($results as $row) {
             $data[] = [
                 'id' => $row['id'],
                 'text' => $row['name']
@@ -56,15 +47,7 @@ class GenreController extends BaseController
     {
         $name = trim($this->request->getPost('name'));
 
-        if($name === '') {
-            return $this->response->setJSON([
-                'status' => false,
-                'message' => 'Nama genre wajib diisi'
-            ]);
-        }
-
-
-        $exists = $this->genre->where('name', $name)->first();
+        $exists = $this->genre->findByName($name);
         if($exists) {
             return $this->response->setJSON([
                 'status' => true,

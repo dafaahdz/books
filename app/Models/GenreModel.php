@@ -44,4 +44,23 @@ class GenreModel extends Model
     protected $afterFind      = [];
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
+
+    public function search($term) 
+    {
+        $results = $this->select('id, name')
+                    ->like('name', $term)
+                    ->findAll();
+
+        return $results;
+    }
+
+    public function findByName($name)
+    {
+        $id = $this->
+        select('id')
+        ->where('name', $name)
+        ->first();
+
+        return $id;
+    }
 }

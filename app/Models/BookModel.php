@@ -23,6 +23,15 @@ class BookModel extends Model
             ->join('genres g', 'g.id = b.genre_id');
     }
 
+    public function createBook(array $data)
+    {
+        if (!$this->validate($data)) {
+            return false;
+        }
+
+        return $this->insert($data);
+    }
+
     public function getDatatables($start, $length, $search, $genreId = null, $orderColumn, $orderDir)
     {
         $builder = $this->baseQuery();
@@ -49,8 +58,7 @@ class BookModel extends Model
 
     public function countFiltered($search, $genreId)
     {
-        $builder = $this->db->table('books b')
-            ->join('genres g', 'g.id = b.genre_id');
+        $builder = $this->baseQuery();
 
         if($search) {
             $builder->groupStart()
@@ -71,4 +79,50 @@ class BookModel extends Model
     {
         return $this->db->table('books')->countAll();
     }
+
+    public function getBooks($genreId = null) 
+    {
+        $builder = $this->baseQuery();
+
+        if($genreId) {
+            $builder->where('b.genre_id', $genreId);
+        }
+
+        return $builder->get()->getResultArray();
+    }
+
+    public function getBooksChunk($limit, $offset, $genreId = null)
+    {
+        $builder = $this->baseQuery()   
+            ->orderBy('b.id ASC')
+            ->limit($limit, $offset);
+
+            if($genreId) {
+                $builder->where('b.genre_id', $genreId);
+            }
+
+            return $builder->get()->getResultArray();
+    }
+
+    public function findWithGenre(int $id) 
+    {
+        return $this->baseQuery()
+            ->where('b.id', $id)
+            ->get()
+            ->getRowArray();
+    }
+
+    public function getBooksForExport($genreId = null)
+    {
+        $builder = $this->baseQuery()
+            ->select('b.title, b.author, b.price, g.name AS genre');
+
+        if($genreId) {
+            $builder->where('b/genre_id', $genreId);
+        }
+
+        return $builder->get()->getResultArray();
+    }
+
+
 }
