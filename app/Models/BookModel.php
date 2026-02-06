@@ -118,10 +118,21 @@ class BookModel extends Model
             ->select('b.title, b.author, b.price, g.name AS genre');
 
         if($genreId) {
-            $builder->where('b/genre_id', $genreId);
+            $builder->where('b.genre_id', $genreId);
         }
 
         return $builder->get()->getResultArray();
+    }
+
+    public function countForExport(?int $genreId = null): int
+    {
+        $builder = $this->db->table('books');
+
+        if($genreId) {
+            $builder->where('genre_id', $genreId);
+        }
+
+        return $builder->countAllResults();
     }
 
 

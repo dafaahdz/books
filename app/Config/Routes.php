@@ -19,7 +19,6 @@ $routes->post('books/delete', 'BooksController::delete');
 $routes->get('testpdf', 'TestPdf::index');
 $routes->get('books/export-pdf', 'BooksController::exportPdf');
 $routes->get('books/export-csv', 'BooksController::exportCsv');
-$routes->get('books/export-excel', 'BooksController::exportExcel');
 $routes->post('books/export-init', 'BooksController::exportInit');
 $routes->post('books/export-chunk', 'BooksController::exportChunk');
 $routes->get('books/export-download', 'BooksController::exportDownload');
