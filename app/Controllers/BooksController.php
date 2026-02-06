@@ -139,85 +139,37 @@ class BooksController extends BaseController
     }
 
 
-    public function exportInit() 
+    public function exportInit()
     {
-        $session = session();
-
-        if($session->get('export_running') === true) {
-            return $this->response
-                ->setStatusCode(429)
-                ->setJSON([
-                    'error' => 'Export already running'
-                ]);
-        }
-
         $genreId = $this->request->getGet('genre_id');
         $service = new BookExcelService();
 
-        $total = $service->init($this->book, $genreId);
+        $result = $service->startExport($this->book, $genreId);
 
-        $session->set([
-            'export_running' => true,
-            'export_offset' => 0,
-            'export_row' => 2,
-            'export_total' => $total,
-            'genre_id' => $genreId,
-        ]);
+        if (isset($result['error'])) {
+            return $this->response
+                ->setStatusCode(429)
+                ->setJSON(['error' => $result['error']]);
+        }
 
         return $this->response->setJSON([
-            'status' => 'started',
-            'total' => $total
+            'status' => $result['status'],
+            'total' => $result['total']
         ]);
     }
 
     public function exportChunk()
     {
-        $session = session();
-
-        if ($session->get('export_running') !== true) {
-            return $this->response->setJSON(['done' => true]);
-        }
-
-
-        $limit = 500;
-        $offset = $session->get('export_offset');
-        $row = $session->get('export_row');
-        $total = $session->get('export_total');
-        $genreId = $session->get('genre_id');
-
         $service = new BookExcelService();
+        $result = $service->processChunk($this->book);
 
-        $processed = $service->processChunk(
-            $this->book,
-            $limit,
-            $offset,
-            $row,
-            $genreId,
-        );
-
-        if($processed === 0) {
-            $session->remove(['export_running']);
-            return $this->response->setJSON(['done' => true]);
-        }
-
-        $session->set([
-            'export_offset' => $offset + $processed,
-            'export_row' => $row
-        ]);
-
-        return $this->response->setJSON([
-            'done' => false,
-            'processed' => min($offset + $processed, $total),
-            'total' => $total
-        ]);
-        
+        return $this->response->setJSON($result);
     }
 
     public function exportDownload()
     {
         $service = new BookExcelService();
-        $filePath = $service->getFilePath();
-        
+
         return $this->response->download(
             $service->getFilePath(),
             null
@@ -226,15 +178,8 @@ class BooksController extends BaseController
 
     public function exportReset()
     {
-        $session = session();
-        $session->remove([
-            'export_running',
-            'export_offset',
-            'export_row',
-            'export_total',
-            'genre_id',
-            'export_done',
-        ]);
+        $service = new BookExcelService();
+        $service->resetExport();
 
         return $this->response->setJSON([
             'status' => 'reset'

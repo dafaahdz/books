@@ -38,9 +38,9 @@ class BookModel extends Model
 
         if ($search) {
             $builder->groupStart()
-                ->like('b.title', $search)
-                ->orLike('b.author', $search)
-                ->orLike('g.name', $search)
+                ->like('b.title', $search, 'both', null, true)
+                ->orLike('b.author', $search, 'both', null, true)
+                ->orLike('g.name', $search, 'both', null, true)
             ->groupEnd();
         }
 
@@ -62,9 +62,9 @@ class BookModel extends Model
 
         if($search) {
             $builder->groupStart()
-                ->like('b.title', $search)
-                ->orLike('b.author', $search)
-                ->orLike('g.name', $search)
+                ->like('b.title', $search, 'both', null, true)
+                ->orLike('b.author', $search, 'both', null, true)
+                ->orLike('g.name', $search, 'both', null, true)
             ->groupEnd();
         }
         
@@ -106,7 +106,9 @@ class BookModel extends Model
 
     public function findWithGenre(int $id) 
     {
-        return $this->baseQuery()
+        return $this->db->table('books b')
+            ->select('b.id, b.title, b.author, b.price, b.genre_id, g.name AS genre_name')
+            ->join('genres g', 'g.id = b.genre_id')
             ->where('b.id', $id)
             ->get()
             ->getRowArray();

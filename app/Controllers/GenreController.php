@@ -31,8 +31,8 @@ class GenreController extends BaseController
         $results = $this->genre->search($term);
 
         $data = [];
-        
-        foreach($results as $row) {
+
+        foreach ($results as $row) {
             $data[] = [
                 'id' => $row['id'],
                 'text' => $row['name']
