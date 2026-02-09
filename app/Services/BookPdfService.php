@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Services;
 
 use App\Libraries\PDF;
@@ -79,12 +80,16 @@ class BookPdfService
 
         $pdf->Ln(5);
 
-        $pdf->MultiCell(190, 5,
+        $pdf->MultiCell(
+            190,
+            5,
             "Deskripsi:\nLampu indikator timbangan kedap kedip sudah di ganti baterai baru",
             1
         );
 
-        $pdf->MultiCell(190, 5,
+        $pdf->MultiCell(
+            190,
+            5,
             "Hasil Laporan:\nNew Data",
             1
         );

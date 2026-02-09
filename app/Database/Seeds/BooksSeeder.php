@@ -46,8 +46,8 @@ class BooksSeeder extends Seeder
             'Nightfall', 'Ravenshade', 'Grimwald', 'Ashborne'
         ];
 
-        $batchSize = 500;
-        $totalData = 10000;
+        $batchSize = 2;
+        $totalData = 25;
 
         $data = [];
         for($i = 1; $i <= $totalData; $i++) {
@@ -72,6 +72,7 @@ class BooksSeeder extends Seeder
             if (! empty($data)) {
                 $db->table('books')->insertBatch($data);
             }
+            print_r($i);
         }
     }
 }

@@ -98,8 +98,8 @@ class BooksController extends BaseController
             ->setHeader('Content-Disposition', 'inline; filename="buku.pdf"')
             ->setBody($content);
     }
-    
-    public function exportCsv() 
+
+    public function exportCsv()
     {
         $genreId = $this->request->getGet('genre_id');
 
@@ -108,11 +108,11 @@ class BooksController extends BaseController
 
         return $this->response->download($filePath, null);
     }
-    
+
     public function update()
     {
         $service = new BookService();
-        
+
         $id = (int) $this->request->getPost('id');
 
         $data = [
@@ -123,12 +123,11 @@ class BooksController extends BaseController
         ];
 
         $status = $service->update($id, $data);
-        
-        return $this->response->setJSON(['status' => $status]);
 
+        return $this->response->setJSON(['status' => $status]);
     }
 
-    public function delete() 
+    public function delete()
     {
         $service = new BookService();
         $id = (int) $this->request->getPost('id');
@@ -185,5 +184,4 @@ class BooksController extends BaseController
             'status' => 'reset'
         ]);
     }
-
 }

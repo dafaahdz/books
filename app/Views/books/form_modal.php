@@ -13,15 +13,15 @@
                 <ul class="nav nav-tabs mb-3">
                     <li class="nav-item">
                         <button class="nav-link active"
-                                data-bs-toggle="tab"
-                                data-bs-target="#tabManual">
+                            data-bs-toggle="tab"
+                            data-bs-target="#tabManual">
                             Form Manual
                         </button>
                     </li>
                     <li class="nav-item">
                         <button class="nav-link"
-                                data-bs-toggle="tab"
-                                data-bs-target="#tabCsv">
+                            data-bs-toggle="tab"
+                            data-bs-target="#tabCsv">
                             Import CSV
                         </button>
                     </li>
@@ -71,17 +71,17 @@
                     <div class="tab-pane fade" id="tabCsv">
 
                         <form action="<?= base_url('books/import-csv') ?>"
-                              method="post"
-                              enctype="multipart/form-data">
-                              
+                            method="post"
+                            enctype="multipart/form-data">
+
 
                             <div class="mb-3">
                                 <label class="form-label">Upload File CSV</label>
                                 <input type="file"
-                                       name="csv_file"
-                                       class="form-control"
-                                       accept=".csv"
-                                       required>
+                                    name="csv_file"
+                                    class="form-control"
+                                    accept=".csv"
+                                    required>
                             </div>
 
                             <div class="alert alert-info small">

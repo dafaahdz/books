@@ -58,10 +58,9 @@ class GenreModel extends Model
 
     public function findByName($name)
     {
-        $id = $this->
-        select('id')
-        ->where('name', $name)
-        ->first();
+        $id = $this->select('id')
+            ->where('name', $name)
+            ->first();
 
         return $id;
     }

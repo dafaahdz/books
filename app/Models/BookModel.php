@@ -41,10 +41,10 @@ class BookModel extends Model
                 ->like('b.title', $search, 'both', null, true)
                 ->orLike('b.author', $search, 'both', null, true)
                 ->orLike('g.name', $search, 'both', null, true)
-            ->groupEnd();
+                ->groupEnd();
         }
 
-        if($genreId) {
+        if ($genreId) {
             $builder->where('b.genre_id', $genreId);
         }
 
@@ -60,15 +60,15 @@ class BookModel extends Model
     {
         $builder = $this->baseQuery();
 
-        if($search) {
+        if ($search) {
             $builder->groupStart()
                 ->like('b.title', $search, 'both', null, true)
                 ->orLike('b.author', $search, 'both', null, true)
                 ->orLike('g.name', $search, 'both', null, true)
-            ->groupEnd();
+                ->groupEnd();
         }
-        
-        if($genreId) {
+
+        if ($genreId) {
             $builder->where('b.genre_id', $genreId);
         }
 
@@ -80,11 +80,11 @@ class BookModel extends Model
         return $this->db->table('books')->countAll();
     }
 
-    public function getBooks($genreId = null) 
+    public function getBooks($genreId = null)
     {
         $builder = $this->baseQuery();
 
-        if($genreId) {
+        if ($genreId) {
             $builder->where('b.genre_id', $genreId);
         }
 
@@ -93,18 +93,18 @@ class BookModel extends Model
 
     public function getBooksChunk($limit, $offset, $genreId = null)
     {
-        $builder = $this->baseQuery()   
+        $builder = $this->baseQuery()
             ->orderBy('b.id ASC')
             ->limit($limit, $offset);
 
-            if($genreId) {
-                $builder->where('b.genre_id', $genreId);
-            }
+        if ($genreId) {
+            $builder->where('b.genre_id', $genreId);
+        }
 
-            return $builder->get()->getResultArray();
+        return $builder->get()->getResultArray();
     }
 
-    public function findWithGenre(int $id) 
+    public function findWithGenre(int $id)
     {
         return $this->db->table('books b')
             ->select('b.id, b.title, b.author, b.price, b.genre_id, g.name AS genre_name')
@@ -119,7 +119,7 @@ class BookModel extends Model
         $builder = $this->baseQuery()
             ->select('b.title, b.author, b.price, g.name AS genre');
 
-        if($genreId) {
+        if ($genreId) {
             $builder->where('b.genre_id', $genreId);
         }
 
@@ -130,12 +130,10 @@ class BookModel extends Model
     {
         $builder = $this->db->table('books');
 
-        if($genreId) {
+        if ($genreId) {
             $builder->where('genre_id', $genreId);
         }
 
         return $builder->countAllResults();
     }
-
-
 }

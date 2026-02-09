@@ -15,7 +15,7 @@ class BookService
     public function __construct()
     {
         $this->book = new BookModel();
-        $this->genre= new GenreModel();
+        $this->genre = new GenreModel();
         $this->db  = \Config\Database::connect();
     }
 
@@ -23,12 +23,12 @@ class BookService
     {
         $this->db->transBegin();
 
-        if($newGenre) {
+        if ($newGenre) {
             $genreId = $this->genre->insert([
                 'name' => trim($newGenre)
             ], true);
 
-            if(!$genreId) {
+            if (!$genreId) {
                 $this->db->transRollback();
                 return false;
             }
@@ -37,7 +37,7 @@ class BookService
             $data['genre_id'] = $genreId;
         }
 
-        if(!$this->book->createBook($data)) {
+        if (!$this->book->createBook($data)) {
             $this->db->transRollback();
             return false;
         }
@@ -47,39 +47,39 @@ class BookService
         return $this->db->transStatus();
     }
 
-    public function update(int $id, array $data):bool {
+    public function update(int $id, array $data): bool
+    {
         $this->db->transBegin();
 
-        if(!$this->book->find($id)) {
+        if (!$this->book->find($id)) {
             $this->db->transRollback();
             return false;
         }
 
-        if(!$this->book->update($id, $data)) {
+        if (!$this->book->update($id, $data)) {
             $this->db->transRollback();
             return false;
         }
-        
+
         $this->db->transCommit();
         return $this->db->transStatus();
     }
 
-    public function delete(int $id):bool {
+    public function delete(int $id): bool
+    {
         $this->db->transBegin();
 
-        if(!$this->book->find($id)) {
+        if (!$this->book->find($id)) {
             $this->db->transRollback();
             return false;
         }
 
-        if(!$this->book->delete($id)) {
+        if (!$this->book->delete($id)) {
             $this->db->transRollback();
             return false;
         }
-        
+
         $this->db->transCommit();
         return $this->db->transStatus();
     }
 }
-
-?>

@@ -26,4 +26,4 @@ $routes->get('books/export-download', 'BooksController::exportDownload');
 $routes->get('books/chunks', 'BooksController::testChunks');
 $routes->match(['get', 'post'], 'books/import-csv', 'BooksController::importCsv');
 
-$routes->post('books/export-reset', 'BooksController::exportReset');    
+$routes->post('books/export-reset', 'BooksController::exportReset');

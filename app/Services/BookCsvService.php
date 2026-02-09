@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\BookModel;
 
-class BookCsvService 
+class BookCsvService
 {
     private string $filePath;
 
@@ -12,7 +12,7 @@ class BookCsvService
     {
         $this->filePath = WRITEPATH . "exports/books_" . date('Ymd_His') . '_' . bin2hex(random_bytes(4)) . ".csv";
 
-        if(!is_dir(dirname($this->filePath))) {
+        if (!is_dir(dirname($this->filePath))) {
             mkdir(dirname($this->filePath), 0777, true);
         }
     }
@@ -20,7 +20,7 @@ class BookCsvService
     public function generate(BookModel $book, ?int $genreId): string
     {
         $handle = fopen($this->filePath, 'w');
-        if($handle ===  false) {
+        if ($handle ===  false) {
             throw new \RuntimeException('Failed to create CSV file');
         }
 
@@ -32,11 +32,11 @@ class BookCsvService
         while (true) {
             $rows = $book->getBooksChunk($chunkSize, $offset, $genreId);
 
-            if( empty($rows)) {
+            if (empty($rows)) {
                 break;
             }
 
-            foreach($rows as $row) {
+            foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row['title'],
                     $row['author'],

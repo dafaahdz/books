@@ -18,8 +18,8 @@ class GenreController extends BaseController
     public function list()
     {
         $genres = $this->genre
-                ->orderBy('name', 'ASC')
-                ->findAll();
+            ->orderBy('name', 'ASC')
+            ->findAll();
 
         return $this->response->setJSON($genres);
     }
@@ -48,7 +48,7 @@ class GenreController extends BaseController
         $name = trim($this->request->getPost('name'));
 
         $exists = $this->genre->findByName($name);
-        if($exists) {
+        if ($exists) {
             return $this->response->setJSON([
                 'status' => true,
                 'id' => $exists['id'],
