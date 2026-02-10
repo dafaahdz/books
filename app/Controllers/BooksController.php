@@ -160,7 +160,7 @@ class BooksController extends BaseController
     public function exportChunk()
     {
         $service = new BookExcelService();
-        $result = $service->processChunk($this->book);
+        $result = $service->exportProcessChunk($this->book);
 
         return $this->response->setJSON($result);
     }
@@ -178,10 +178,148 @@ class BooksController extends BaseController
     public function exportReset()
     {
         $service = new BookExcelService();
-        $service->resetExport();
+        $service->resetState('excel_export_state');
 
         return $this->response->setJSON([
             'status' => 'reset'
         ]);
+    }
+
+    public function importInit()
+    {
+        $file = $this->request->getFile('file');
+        
+        if (!$file || !$file->isValid()) {
+            return $this->response
+                ->setStatusCode(400)
+                ->setJSON(['error' => 'File tidak valid']);
+        }
+
+        $filePath = $file->getTempName();
+        $service = new BookExcelService();
+        
+        $result = $service->startImport($filePath);
+
+        if (isset($result['error'])) {
+            return $this->response
+                ->setStatusCode(429)
+                ->setJSON(['error' => $result['error']]);
+        }
+
+        return $this->response->setJSON([
+            'status' => $result['status'],
+            'total' => $result['total']
+        ]);
+    }
+
+    public function importChunk()
+    {
+        try {
+            $service = new BookExcelService();
+            $result = $service->processImportChunk($this->book);
+
+            return $this->response->setJSON($result);
+            
+        } catch (\Exception $e) {
+            return $this->response
+                ->setStatusCode(500)
+                ->setJSON(['error' => $e->getMessage()]);
+        }
+    }
+
+    public function importReset()
+    {
+        $service = new BookExcelService();
+        $service->resetState('excel_import_state');
+
+        return $this->response->setJSON([
+            'status' => 'reset'
+        ]);
+    }
+
+    public function downloadTemplate()
+    {
+        $service = new BookExcelService();
+        
+        // Buat template mirip seperti export (reuse logic)
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        
+        // Header title "DATA BUKU" dengan style yang sama
+        $sheet->mergeCells('A1:D1');
+        $sheet->setCellValue('A1', 'DATA BUKU');
+        $sheet->getStyle('A1:D1')->applyFromArray([
+            'font' => [
+                'color' => ['rgb' => 'FFFFFF'],
+                'bold' => true,
+                'size' => 14
+            ],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'color' => ['rgb' => '404040']
+            ],
+            'alignment' => [
+                'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
+                'vertical' => \PhpOffice\PhpSpreadsheet\Style\Alignment::VERTICAL_CENTER
+            ]
+        ]);
+        
+        // Row 2 kosong
+        // Row 3 headers
+        $sheet->fromArray(
+            ['Judul', 'Penulis', 'Genre', 'Price'],
+            null,
+            'A3'
+        );
+        
+        // Style headers yang sama dengan export
+        $sheet->getStyle('A3:D3')->applyFromArray([
+            'font' => ['bold' => true],
+            'fill' => [
+                'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
+                'color' => ['rgb' => 'F2F2F2']
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'CCCCCC']
+                ]
+            ]
+        ]);
+        
+        // Sample data untuk panduan
+        $sheet->fromArray([
+            ['Contoh Judul Buku', 'Nama Penulis', 'Fiksi', 50000],
+            ['Laskar Pelangi', 'Andrea Hirata', 'Romance', 75000]
+        ], null, 'A4');
+        
+        // Style sample data
+        $sheet->getStyle('A4:D5')->applyFromArray([
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
+                    'color' => ['rgb' => 'DDDDDD']
+                ]
+            ]
+        ]);
+        
+        // Auto-size columns (sama seperti export)
+        foreach (range('A', 'D') as $column) {
+            $sheet->getColumnDimension($column)->setAutoSize(true);
+        }
+        
+        // Direct download to browser
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        
+        ob_start();
+        $writer->save('php://output');
+        $excelContent = ob_get_clean();
+        
+        return $this->response
+            ->setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+            ->setHeader('Content-Disposition', 'attachment; filename="template_import_buku.xlsx"')
+            ->setHeader('Cache-Control', 'max-age=0')
+            ->setHeader('Pragma', 'public')
+            ->setBody($excelContent);
     }
 }

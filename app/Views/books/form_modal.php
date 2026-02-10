@@ -21,8 +21,8 @@
                     <li class="nav-item">
                         <button class="nav-link"
                             data-bs-toggle="tab"
-                            data-bs-target="#tabCsv">
-                            Import CSV
+                            data-bs-target="#tabExcel">
+                            Import Excel
                         </button>
                     </li>
                 </ul>
@@ -67,35 +67,44 @@
 
                     </div>
 
-                    <!-- TAB IMPORT CSV -->
-                    <div class="tab-pane fade" id="tabCsv">
+                    <!-- TAB IMPORT EXCEL -->
+                    <div class="tab-pane fade" id="tabExcel">
 
-                        <form action="<?= base_url('books/import-csv') ?>"
-                            method="post"
-                            enctype="multipart/form-data">
-
-
+                        <div id="importSection">
                             <div class="mb-3">
-                                <label class="form-label">Upload File CSV</label>
+                                <label class="form-label">Upload File Excel</label>
                                 <input type="file"
-                                    name="csv_file"
+                                    id="excelFile"
                                     class="form-control"
-                                    accept=".csv"
+                                    accept=".xlsx,.xls"
                                     required>
                             </div>
 
-                            <div class="alert alert-info small">
-                                Format CSV wajib:
-                                <code>title,author,genre_id,price</code>
-                            </div>
-
-                            <div class="text-end">
-                                <button class="btn btn-success" type="submit">
-                                    Import CSV
+                            <div class="d-flex justify-content-between mb-3">
+                                <button class="btn btn-outline-primary btn-sm" onclick="downloadTemplate()">
+                                    📥 Download Template
+                                </button>
+                                <button class="btn btn-success" onclick="startImport()">
+                                    📤 Import Excel
                                 </button>
                             </div>
 
-                        </form>
+                            <!-- Progress Bar -->
+                            <div id="importProgress" class="d-none">
+                                <div class="mb-2">
+                                    <small class="text-muted">Memproses import...</small>
+                                </div>
+                                <div class="progress mb-2">
+                                    <div id="progressBar" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div id="progressText" class="small text-muted">0 / 0 data</div>
+                                    <button class="btn btn-outline-danger btn-sm" onclick="cancelImport()">
+                                        ❌ Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
 
                     </div>
 

@@ -350,7 +350,7 @@
             $('#exportStatus').removeClass('d-none')
             $('#btnExportExcel').prop('disabled', true)
 
-            updateProgress(0)
+            updateExportProgress(0)
 
             $.ajax({
                 url: url,
@@ -399,12 +399,12 @@
                     if (exportCanceled) return
 
                     if (res.done) {
-                        updateProgress(100);
+                        updateExportProgress(100);
 
                         setTimeout(() => {
                             $('#exportWrapper').addClass('d-none');
                             $('#exportStatus').addClass('d-none');
-                            updateProgress(0);
+                            updateExportProgress(0);
                             $('#btnExportExcel').prop('disabled', false)
                                 .html(exportBtnHtml);
                             window.location = "<?= base_url('books/export-download') ?>"
@@ -416,7 +416,7 @@
                     let percent = (res.processed / res.total) * 100;
                     percent = Math.min(percent, 95);
 
-                    updateProgress(percent)
+                    updateExportProgress(percent)
                     setTimeout(processChunk, 300)
                 },
                 error: function() {
@@ -428,7 +428,7 @@
             })
         }
 
-        function updateProgress(percent) {
+        function updateExportProgress(percent) {
             $('#exportWrapper .progress-bar')
                 .css('width', percent + '%')
                 .text(Math.floor(percent) + '%');
@@ -460,6 +460,179 @@
                 "<?= base_url('books/export-reset') ?>"
             );
         });
+    </script>
+
+    <!-- Import Excel Functions -->
+    <script>
+    function downloadTemplate() {
+        window.open('<?= base_url('books/download-template') ?>', '_blank');
+    }
+
+    async function startImport() {
+        const fileInput = document.getElementById('excelFile');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Pilih file Excel terlebih dahulu');
+            return;
+        }
+
+        try {
+            // Reset any existing import state first
+            await resetImportState();
+            
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Reset progress UI
+            document.getElementById('importProgress').classList.remove('d-none');
+            document.getElementById('importSection').querySelectorAll('button:not([onclick])').forEach(btn => btn.disabled = true);
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = 'Mempersiapkan...';
+
+            // Start import
+            const response = await fetch('<?= base_url('books/import-init') ?>', {
+                method: 'POST',
+                body: formData
+            });
+            
+            let result;
+            try {
+                result = await response.json();
+            } catch (e) {
+                const responseText = await response.text();
+                throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`);
+            }
+            
+            if (response.status !== 200) {
+                throw new Error(result.error || `HTTP ${response.status}: Gagal memulai import`);
+            }
+            
+            // Initialize progress
+            if (result.total > 0) {
+                updateImportProgress(0);
+            } else {
+                document.getElementById('progressText').textContent = 'Tidak ada data untuk diimport';
+                document.getElementById('importProgress').classList.add('d-none');
+                return;
+            }
+            
+            // Process chunks
+            processImportChunks(result.total);
+
+        } catch (error) {
+            alert(error.message);
+            resetImportForm();
+        }
+    }
+
+    async function resetImportState() {
+        try {
+            await fetch('<?= base_url('books/import-reset') ?>', {
+                method: 'POST'
+            });
+        } catch (error) {
+            // Silently handle reset errors
+        }
+    }
+
+    function cancelImport() {
+        if (confirm('Batalkan proses import?')) {
+            resetImportState();
+            resetImportForm();
+        }
+    }
+
+    function processImportChunks(total) {
+        // Make sure progress is visible before processing
+        document.getElementById('importProgress').classList.remove('d-none');
+        updateImportProgress(0);
+        
+        function processChunk() {
+            fetch('<?= base_url('books/import-chunk') ?>', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(result => {
+                if (result.done) {
+                    // Always show 100% progress even if all data skipped
+                    updateImportProgress(100);
+                    
+                    setTimeout(() => {
+                        // Show accurate summary
+                        const skipped = result.total - result.processed;
+                        let message = `Import selesai! ${result.processed} data berhasil diimport`;
+                        if (skipped > 0) {
+                            message += `, ${skipped} data dilewati (invalid/genre tidak ditemukan)`;
+                        }
+                        alert(message);
+                        
+                        // Refresh ONLY DataTable
+                        if (typeof table !== 'undefined' && typeof table.ajax.reload === 'function') {
+                            table.ajax.reload(null, false);
+                        }
+                        
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('bookModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        
+                        resetImportForm();
+                    }, 800);
+                    
+                    return;
+                }
+
+                // Calculate progress based on total rows processed, not just inserted
+                let percent = (result.processed / result.total) * 100;
+                
+                // If all skipped but processed count is 0, show minimal progress
+                if (result.processed === 0 && result.total > 0) {
+                    percent = 10; // Show some progress to indicate processing happened
+                }
+                
+                percent = Math.min(percent, 95);
+
+                updateImportProgress(percent);
+                setTimeout(processChunk, 300);
+            })
+            .catch(error => {
+                alert('Error saat import: ' + error.message);
+                resetImportForm();
+            });
+        }
+        
+        processChunk();
+    }
+
+    function updateImportProgress(percent) {
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        
+        if (!progressBar || !progressText) {
+            return;
+        }
+        
+        progressBar.style.width = percent + '%';
+        progressText.textContent = Math.floor(percent) + '%';
+    }
+
+    function resetImportForm() {
+        document.getElementById('importProgress').classList.add('d-none');
+        document.getElementById('importSection').querySelectorAll('button').forEach(btn => btn.disabled = false);
+        document.getElementById('excelFile').value = '';
+        document.getElementById('progressBar').style.width = '0%';
+        document.getElementById('progressText').textContent = '0 / 0 data';
+    }
     </script>
 
 
