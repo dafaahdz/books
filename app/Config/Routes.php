@@ -5,16 +5,23 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
-$routes->get('/', 'Home::index');
-$routes->get('/books', 'BooksController::index');
-$routes->post('/books/datatables', 'BooksController::datatables');
-$routes->post('books/store', 'BooksController::store');
-$routes->get('genres/list', 'GenreController::list');
-$routes->post('genres/store', 'GenreController::store');
-$routes->get('genres/search', 'GenreController::search');
-$routes->get('books/show/(:num)', 'BooksController::show/$1');
-$routes->post('books/update', 'BooksController::update');
-$routes->post('books/delete', 'BooksController::delete');
+
+$routes->get('/', 'AuthController::login');
+$routes->get('/login', 'AuthController::login');
+$routes->post('/login/process', 'AuthController::loginProcess');
+$routes->get('/login', 'AuthController::logout');
+
+$routes->group('', ['filter' => 'auth'], function ($routes) {
+    $routes->get('/dashboard', 'BooksController::index');
+    $routes->post('/books/datatables', 'BooksController::datatables');
+    $routes->post('books/store', 'BooksController::store');
+    $routes->get('genres/list', 'GenreController::list');
+    $routes->post('genres/store', 'GenreController::store');
+    $routes->get('genres/search', 'GenreController::search');
+    $routes->get('books/show/(:num)', 'BooksController::show/$1');
+    $routes->post('books/update', 'BooksController::update');
+    $routes->post('books/delete', 'BooksController::delete');
+});
 
 $routes->get('testpdf', 'TestPdf::index');
 $routes->get('books/export-pdf', 'BooksController::exportPdf');
