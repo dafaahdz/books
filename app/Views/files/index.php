@@ -1,0 +1,226 @@
+<?php $this->extend('layouts/main') ?>
+<?php $this->section('title') ?>Data File<?php $this->endSection() ?>
+<?php $this->section('active_menu') ?>files<?php $this->endSection() ?>
+<?php $this->section('content') ?>
+
+<div class="container mt-5">
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+            <span class="fw-semibold">Daftar File</span>
+            <button class="btn btn-primary btn-sm" id="btnAdd">
+                + Tambah File
+            </button>
+        </div>
+
+        <div class="card-body">
+            <table id="filesTable" class="table table-striped table-bordered w-100">
+                <thead class="table-dark">
+                    <tr>
+                        <th>File Name</th>
+                        <th>Created At</th>
+                        <th>Created By</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+    </div>
+</div>
+
+<?= view('files/form_modal') ?>
+
+<?php $this->endSection() ?>
+
+<?php $this->section('scripts') ?>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://unpkg.com/dropzone@5/dist/min/dropzone.min.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
+
+<script>
+    let table;
+
+    $(function() {
+        table = $('#filesTable').DataTable({
+            processing: true,
+            serverSide: true,
+            responsive: true,
+            ajax: {
+                url: "<?= base_url('files/list') ?>",
+                type: 'POST'
+            },
+            columns: [{
+                    data: 'filerealname'
+                },
+                {
+                    data: 'created_at',
+                    render: function(data) {
+                        if (!data) return '-';
+                        const date = new Date(data);
+                        return date.toLocaleString('id-ID', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                        })
+                    }
+                },
+                {
+                    data: 'created_by_name'
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function(row) {
+                        return `
+                            <a href="<?= base_url('files/download') ?>/${row.fileid}" class="btn btn-sm btn-info text-white btn-view">
+                                View
+                            </a>
+                            <button class="btn btn-sm btn-warning btn-edit" data-id="${row.fileid}">
+                                Edit
+                            </button>
+                            <button class="btn btn-sm btn-danger btn-delete" data-id="${row.fileid}">
+                                Delete
+                            </button>
+                        `
+                    }
+                }
+            ]
+        })
+
+        Dropzone.autoDiscover = false
+
+        $('#btnAdd').on('click', function() {
+            $('#fileModal').modal('show')
+        });
+
+        $('#fileModal').on('hidden.bs.modal', function() {
+            $('#modalTitle').text('Tambah File')
+        })
+
+        initDropzoneAdd()
+
+        $('#filesTable').on('click', '.btn-edit', function() {
+            const id = $(this).data('id')
+
+            $.ajax({
+                url: `<?= base_url('files/show') ?>/{$id}`,
+                method: 'GET',
+                dataType: 'json',
+                success: function(res) {
+                    $('#fileId').val(res.fileid);
+                    $('#filerealname').val(res.filerealname);
+                    $('#currentFileName').text(res.filerealname);
+                    $('#currentFilePath').val(res.filedirectory + '/' + res.filename);
+                    $('#modalTitle').text('Edit File');
+                    $('#fileModal').modal('show');
+                },
+                error: function() {
+                    alert('Gagal mengambil data file')
+                }
+            })
+        })
+
+        $('#fileModal').on('shown.bs.modal', function() {
+            const modalTitle = $('#modalTitle').text()
+            if (modalTitle === 'Edit File' && !window.dropzoneEdit) {
+                initDropzoneEdit()
+            }
+        })
+
+        $('#fileForm').on('submit', function(e) {
+            e.preventDefault()
+
+            const id = $('#fileId').val()
+            const url = id ? "<?= base_url('files/update') ?>" : "<?= base_url('files/update') ?>";
+
+            const formData = new FormData(this)
+
+            if (id) {
+                $.ajax({
+                    url: url,
+                    method: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function() {
+                        $('#fileModal').modal('hide')
+                        table.ajax.reload(null, false)
+                    },
+                    error: function() {
+                        alert('Gagal menyimpan data file')
+                    }
+                })
+            } else {
+                if (window.dropzoneAdd && window.dropzoneAdd.getQueuedFiles().length > 0) {
+                    window.dropzoneAdd.processQueue()
+                }
+            }
+        })
+
+        $('#filesTable').on('click', '.btn-delete', function() {
+            const id = $(this).data('id')
+
+            if (!confirm('Yakin mau hapus file ini?')) return;
+
+            $.ajax({
+                url: '<?= base_url('files/delete') ?>',
+                method: 'POST',
+                data: {
+                    fileid: id
+                },
+                success: function() {
+                    table.ajax.reload(null, false);
+                },
+                error: function() {
+                    alert('Gagal menghapus file');
+                }
+            })
+        })
+    })
+
+    function initDropzoneAdd() {
+
+        if (Dropzone.forElement('#myDropzone')) {
+            Dropzone.forElement('#myDropzone').destroy()
+        }
+
+        window.dropzoneAdd = new Dropzone('#myDropzone', {
+            url: "<?= base_url('files/chunk-upload') ?>",
+            chunking: true,
+            chunkSize: 2 * 1024 * 1024,
+            maxFilesize: 100,
+            addRemoveLinks: true,
+            acceptedFiles: '*/*',
+            dictDefaultMessage: 'Drop file di sini atau klik untuk upload',
+            params: function(files, xhr, chunk) {
+                if (chunk) {
+                    return {
+                        uploadId: chunk.file.upload.uuid,
+                        chunkIndex: chunk.index,
+                        totalChunks: chunk.file.upload.totalChunkCount,
+                        originalName: chunk.file.name
+                    }
+                }
+                return {}
+            },
+            init: function() {
+                this.on('success', function(file, response) {
+                    if (response.isLastChunk) {
+                        $('#fileModal').modal('hide')
+                        table.ajax.reload(null, false)
+                        this.removeAllFiles()
+                    }
+                })
+                this.on('error', function(file, message) {
+                    alert(message || 'Upload gagal')
+                })
+            }
+        })
+    }
+</script>
+
+<?php $this->endSection() ?>

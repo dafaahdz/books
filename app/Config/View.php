@@ -59,4 +59,5 @@ class View extends BaseView
      * @var list<class-string<ViewDecoratorInterface>>
      */
     public array $decorators = [];
+    public string $appOverridesFolder = 'overrides';
 }

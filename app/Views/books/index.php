@@ -1,5 +1,6 @@
 <?php $this->extend('layouts/main') ?>
 <?php $this->section('title') ?>Data Buku<?php $this->endSection() ?>
+<?php $this->section('active_menu') ?>books<?php $this->endSection() ?>
 <?php $this->section('content') ?>
 
 <div class="container mt-5">
