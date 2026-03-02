@@ -8,7 +8,7 @@ use CodeIgniter\Router\RouteCollection;
 
 $routes->get('/login', 'AuthController::login');
 $routes->post('/login/process', 'AuthController::loginProcess');
-$routes->get('/login', 'AuthController::logout');
+$routes->get('/logout', 'AuthController::logout');
 
 $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->get('/dashboard', function () {
@@ -23,6 +23,24 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->get('books/show/(:num)', 'BooksController::show/$1');
     $routes->post('books/update', 'BooksController::update');
     $routes->post('books/delete', 'BooksController::delete');
+
+
+    $routes->get('/genres', 'GenreController::index');
+    $routes->post('/genres/datatables', 'GenreController::datatables');
+    $routes->get('/genres/show/(:num)', 'GenreController::show/$1');
+    $routes->post('/genres/update', 'GenreController::update');
+    $routes->post('/genres/delete', 'GenreController::delete');
+    $routes->get('/genres/books/(:num)', 'GenreController::books/$1');
+
+    $routes->get('files', 'FileController::index');
+    $routes->post('files/list', 'FileController::list');
+    $routes->get('files/show/(:num)', 'FileController::show/$1');
+    $routes->post('files/update', 'FileController::update');
+    $routes->post('files/delete', 'FileController::delete');
+    $routes->get('files/download/(:num)', 'FileController::download/$1');
+    $routes->post('files/chunk-upload', 'FileController::chunkUpload');
+    $routes->post('files/save-files', 'FileController::saveFiles');
+    $routes->post('files/cleanup-upload', 'FileController::cleanupUpload');
 });
 
 $routes->get('testpdf', 'TestPdf::index');
