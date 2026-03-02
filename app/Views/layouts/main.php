@@ -63,6 +63,71 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <script>
+        function showAlert(options) {
+            const defaults = {
+                title: 'Peringatan',
+                text: '',
+                icon: 'info',
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#3085d6'
+            };
+            return Swal.fire({
+                ...defaults,
+                ...options
+            });
+        }
+
+        function showSuccess(text, title = 'Berhasil') {
+            return showAlert({
+                title: title,
+                text: text,
+                icon: 'success'
+            });
+        }
+
+        function showError(text, title = 'Gagal') {
+            return showAlert({
+                title: title,
+                text: text,
+                icon: 'error',
+                confirmButtonColor: '#d33'
+            });
+        }
+
+        function showWarning(text, title = 'Peringatan') {
+            return showAlert({
+                title: title,
+                text: text,
+                icon: 'warning',
+                confirmButtonColor: '#ffc107'
+            });
+        }
+
+        function showConfirm(options) {
+            const defaults = {
+                title: 'Konfirmasi',
+                text: 'Apakah Anda yakin?',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d'
+            };
+            return Swal.fire({
+                ...defaults,
+                ...options
+            });
+        }
+    </script>
+
     <?= $this->renderSection('scripts') ?>
 </body>
 
