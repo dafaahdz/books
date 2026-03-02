@@ -184,7 +184,7 @@ class FileService
         }
 
         if (!empty($updateData)) {
-            $updateData['updated_by'] = session()->get('userid');
+            $updateData['updated_by'] = session()->get('user_id');
             model(FileModel::class)->update($fileId, $updateData);
         }
 

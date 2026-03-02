@@ -121,7 +121,7 @@ class FileController extends BaseController
             $result = $service->saveTempFile(
                 $file['tempPath'],
                 $file['originalname'],
-                session()->get('userid')
+                session()->get('user_id')
             );
             if ($result['sukses'] == 1) {
                 $savedCount++;
