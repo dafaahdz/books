@@ -97,24 +97,61 @@
             $('#fileModal').modal('show')
         });
 
-        $('#fileModal').on('hidden.bs.modal', function() {
-            if (window.uploadedFiles && window.uploadedFiles.length > 0) {
-                window.uploadedFiles.forEach(function(file) {
-                    $.ajax({
-                        url: '<?= base_url('files/cleanup-upload') ?>',
-                        method: 'POST',
-                        data: {
-                            uploadId: file.uploadId
-                        },
-                        async: false
-                    })
-                })
+        $('#btnCloseModal, #btnTutup').on('click', function() {
+            $('#fileModal').modal('hide');
+        });
+
+        $('#fileModal').on('hide.bs.modal', function(e) {
+            const dropzone = window.dropzoneAdd
+            if (!dropzone) return true;
+
+            const isUploading = dropzone.getUploadingFiles().length > 0
+            const hasQueued = dropzone.getQueuedFiles().length > 0
+
+            if (isUploading || hasQueued) {
+                e.preventDefault()
+                showWarning('Mohon tunggu hingga upload selesai')
+                return false
             }
-            window.dropzoneAdd?.removeAllFiles()
+
+            const uploadedFiles = window.uploadedFiles || [];
+
+            if (uploadedFiles.length > 0) {
+                e.preventDefault();
+
+                showConfirm({
+                    title: 'Perubahan belum disimpan!',
+                    text: 'Apakah kamu yakin membuang perubahan? File yang diupload akan dihapus.',
+                    confirmButtonText: 'Ya, tutup',
+                    confirmButtonColor: '#d33'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.uploadedFiles.forEach(function(file) {
+                            $.ajax({
+                                url: '<?= base_url('files/cleanup-upload') ?>',
+                                method: 'POST',
+                                data: {
+                                    uploadId: file.uploadId
+                                },
+                                async: false
+                            });
+                        });
+
+                        window.uploadedFiles = [];
+                        dropzone.removeAllFiles();
+                        $('#btnSimpan').prop('disabled', true);
+                        $('#fileModal').modal('hide');
+                    }
+                });
+
+                return false;
+            }
+
+            window.dropzoneAdd?.removeAllFiles();
             window.uploadedFiles = [];
             $('#btnSimpan').prop('disabled', true);
             $('#modalTitle').text('Tambah File');
-        })
+        });
 
         initDropzoneAdd()
 
@@ -134,7 +171,7 @@
                     $('#fileModal').modal('show');
                 },
                 error: function() {
-                    alert('Gagal mengambil data file')
+                    showError('Gagal mengambil data file')
                 }
             })
         })
@@ -170,7 +207,7 @@
                         table.ajax.reload(null, false)
                     },
                     error: function() {
-                        alert('Gagal menyimpan data file')
+                        showError('Gagal menyimpan data file')
                     }
                 })
             } else {
@@ -195,15 +232,25 @@
                     table.ajax.reload(null, false);
                 },
                 error: function() {
-                    alert('Gagal menghapus file');
+                    showError('Gagal menghapus file');
                 }
             })
         })
     })
 
     $('#btnSimpan').on('click', function() {
+        if (window.dropzoneAdd) {
+            const isUploading = window.dropzoneAdd.getUploadingFiles()
+            const hasQueued = window.dropzoneAdd.getQueuedFiles()
+
+            if (isUploading.length > 0 || hasQueued.length > 0) {
+                showWarning('Tunggu semua file selesai diupload')
+                return
+            }
+        }
+
         if (!window.uploadedFiles || window.uploadedFiles.length === 0) {
-            alert('Upload filenya dulu')
+            showWarning('Upload filenya dulu')
             return
         }
 
@@ -214,15 +261,15 @@
                 files: JSON.stringify(window.uploadedFiles)
             },
             success: function() {
+                window.uploadedFiles = []
                 $('#fileModal').modal('hide')
                 table.ajax.reload(null, false)
                 window.dropzoneAdd.removeAllFiles()
-                window.uploadedFiles = []
                 $('#btnSimpan').prop('disabled', true)
             },
             error: function(jqXHR) {
                 const msg = jqXHR.responseJSON?.pesan || 'Gagal menyimpan file';
-                alert(msg)
+                showError(msg)
             }
         })
     })
@@ -236,8 +283,8 @@
         window.dropzoneAdd = new Dropzone('#myDropzone', {
             url: "<?= base_url('files/chunk-upload') ?>",
             chunking: true,
-            chunkSize: 2 * 1024 * 1024,
-            maxFilesize: 100,
+            chunkSize: 5 * 1024 * 1024,
+            maxFilesize: 1000,
             addRemoveLinks: true,
             dictDefaultMessage: 'Drop file di sini atau klik untuk upload',
             params: function(files, xhr, chunk) {
@@ -258,6 +305,10 @@
                 }
             },
             init: function() {
+                this.on('addfile', function(file) {
+                    isUploading = true;
+                });
+
                 this.on('success', function(file, response) {
                     if (!window.uploadedFiles) {
                         window.uploadedFiles = []
@@ -272,12 +323,16 @@
                     const queued = window.dropzoneAdd.getQueuedFiles();
                     const uploading = window.dropzoneAdd.getUploadingFiles();
                     if (queued.length === 0 && uploading.length === 0) {
-                        $('#btnSimpan').prop('disabled', false)
+                        isUploading = false;
+                        hasUploadedFiles = true;
+                        $('#btnSimpan').prop('disabled', false);
+                        showSuccess('Upload selesai! Klik Simpan untuk menyimpan.');
                     }
                 })
                 this.on('error', function(file, message) {
+                    isUploading = false
                     let errorMsg = typeof message === 'object' ? (message.message || JSON.stringify(message)) : message;
-                    alert(errorMsg || 'Upload gagal')
+                    showError(errorMsg || 'Upload gagal')
                 })
             }
         })

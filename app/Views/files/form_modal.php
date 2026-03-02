@@ -3,7 +3,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalTitle">Tambah File</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" id="btnCloseModal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form action="<?= base_url('files/chunk-upload') ?>" class="dropzone" id="myDropzone" id="fileForm">
@@ -14,7 +14,7 @@
             </div>
             <div class="modal-footer d-flex justify-content-end">
                 <button type="button" id="btnSimpan" class="btn btn-primary " disabled>Simpan</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" id="btnTutup" class="btn btn-secondary">Tutup</button>
             </div>
         </div>
     </div>
