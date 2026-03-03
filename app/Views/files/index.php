@@ -40,6 +40,7 @@
 
 <script>
     let table;
+    Dropzone.autoDiscover = false
 
     $(function() {
         table = $('#filesTable').DataTable({
@@ -76,8 +77,8 @@
                     searchable: false,
                     render: function(row) {
                         return `
-                            <a href="<?= base_url('files/download') ?>/${row.fileid}" class="btn btn-sm btn-info text-white btn-view">
-                                View
+                            <a href="<?= base_url('files/download') ?>/${row.fileid}" class="btn btn-sm btn-info text-white btn-download">
+                                Download
                             </a>
                             <button class="btn btn-sm btn-warning btn-edit" data-id="${row.fileid}">
                                 Edit
@@ -91,7 +92,6 @@
             ]
         })
 
-        Dropzone.autoDiscover = false
 
         $('#btnAdd').on('click', function() {
             $('#fileModal').modal('show')
@@ -151,9 +151,19 @@
             window.uploadedFiles = [];
             $('#btnSimpan').prop('disabled', true);
             $('#modalTitle').text('Tambah File');
-        });
 
-        initDropzoneAdd()
+            $('#fileId').val('')
+            $('#currentFilePath').val('')
+            $('#filerealname').val('')
+            $('#currentFileName').text('')
+            $('#addFields').show()
+            $('#editFields').hide()
+            window.editedFiles = [];
+            if (window.dropzoneEdit) {
+                window.dropzoneEdit.removeAllFiles();
+            }
+
+        });
 
         $('#filesTable').on('click', '.btn-edit', function() {
             const id = $(this).data('id')
@@ -179,11 +189,19 @@
         $('#fileModal').on('shown.bs.modal', function() {
             const modalTitle = $('#modalTitle').text()
             if (modalTitle === 'Tambah File') {
-                $('#btnSimpan').prop('disabled', true);
-                window.uploadedFiles = [];
+                $('#editFields').hide()
+                $('#addFields').show()
+                $('#btnSimpan').prop('disabled', true)
+                window.uploadedFiles = []
+                initDropzoneAdd()
             }
-            if (modalTitle === 'Edit File' && !window.dropzoneEdit) {
-                initDropzoneEdit()
+            if (modalTitle === 'Edit File') {
+                $('#addFields').hide()
+                $('#editFields').show()
+                $('#editFields').removeClass('d-none')
+                if (!window.dropzoneEdit) {
+                    initDropzoneEdit()
+                }
             }
         })
 
@@ -239,6 +257,61 @@
     })
 
     $('#btnSimpan').on('click', function() {
+        const modalTitle = $('#modalTitle').text()
+        const isEditMode = modalTitle == 'Edit File'
+
+        if (isEditMode) {
+            if (window.dropzoneEdit) {
+                const isUploading = window.dropzoneEdit.getUploadingFiles()
+                const hasQueued = window.dropzoneEdit.getQueuedFiles()
+
+                if (isUploading.length > 0 || hasQueued.length > 0) {
+                    showWarning('Tunggu semua file selesai diupload');
+                    return
+                }
+            }
+
+            if (window.editedFiles && window.editedFiles.length > 0) {
+                $.ajax({
+                    url: '<?= base_url('files/updateFile') ?>',
+                    method: 'POST',
+                    data: {
+                        fileid: $('#fileId').val(),
+                        filerealname: $('#filerealname').val(),
+                        files: JSON.stringify(window.editedFiles)
+                    },
+                    success: function() {
+                        window.editedFiles = []
+                        $('#fileModal').modal('hide')
+                        table.ajax.reload(null, false)
+                        window.dropzoneEdit.removeAllFiles()
+                    },
+                    error: function() {
+                        showError('Gagal update file')
+                    }
+                })
+            } else {
+                $.ajax({
+                    url: '<?= base_url('files/update') ?>',
+                    method: 'POST',
+                    data: {
+                        fileid: $('#fileId').val(),
+                        filerealname: $('#filerealname').val(),
+                    },
+                    success: function() {
+                        $('#fileModal').modal('hide')
+                        table.ajax.reload(null, false)
+                    },
+
+                    error: function() {
+                        showError('Gagal update nama fike')
+                    }
+                })
+            }
+            return
+        }
+
+
         if (window.dropzoneAdd) {
             const isUploading = window.dropzoneAdd.getUploadingFiles()
             const hasQueued = window.dropzoneAdd.getQueuedFiles()
@@ -276,8 +349,8 @@
 
     function initDropzoneAdd() {
 
-        if (Dropzone.forElement('#myDropzone')) {
-            Dropzone.forElement('#myDropzone').destroy()
+        if (window.dropzoneAdd) {
+            return
         }
 
         window.dropzoneAdd = new Dropzone('#myDropzone', {
@@ -309,6 +382,18 @@
                     isUploading = true;
                 });
 
+                this.on('removedfile', function(file) {
+                    if (window.uploadedFiles) {
+                        window.uploadedFiles = window.uploadedFiles.filter(function(f) {
+                            return f.uploadId != file.upload.uuid
+                        })
+                    }
+
+                    if (!window.uploadedFiles || window.uploadedFiles.length == 0) {
+                        $('#btnSimpan').prop('disabled', true)
+                    }
+                })
+
                 this.on('success', function(file, response) {
                     if (!window.uploadedFiles) {
                         window.uploadedFiles = []
@@ -333,6 +418,86 @@
                     isUploading = false
                     let errorMsg = typeof message === 'object' ? (message.message || JSON.stringify(message)) : message;
                     showError(errorMsg || 'Upload gagal')
+                })
+            }
+        })
+    }
+
+    function initDropzoneEdit() {
+
+        try {
+            const existing = Dropzone.forElement('#myDropzoneEdit');
+            if (existing) {
+                existing.destroy();
+            }
+        } catch (e) {}
+
+        window.dropzoneEdit = new Dropzone('#myDropzoneEdit', {
+            url: '<?= base_url('files/chunk-upload') ?>',
+            chunking: true,
+            maxFiles: 1,
+            chunkSize: 5 * 1024 * 1024,
+            maxFilesize: 1000,
+            addRemoveLinks: true,
+            dictDefaultMessage: 'Drop file di sini atau klik untuk upload',
+            params: function(files, xhr, chunk) {
+                const filename = files && files.length > 0 ? files[0].name : ''
+                const uploadId = chunk ? chunk.file.upload.uuid : files[0].upload.uuid
+
+                if (chunk) {
+                    return {
+                        uploadId: uploadId,
+                        chunkIndex: chunk.index,
+                        totalChunks: chunk.file.upload.totalChunkCount,
+                        originalName: filename
+                    }
+                }
+                return {
+                    uploadId: uploadId,
+                    originalName: filename
+                }
+            },
+            init: function() {
+                this.on('addfile', function(file) {
+                    window.isUploading = true
+                })
+
+                this.on('removedfile', function(file) {
+                    if (window.editedFiles) {
+                        window.editedFiles = window.editedFiles.filter(function(f) {
+                            return f.uploadId != file.upload.uuid
+                        })
+                    }
+
+                    if (!window.editedFiles || window.editedFiles.length == 0) {
+                        $('#btnSimpan').prop('disabled', true)
+                    }
+                })
+
+                this.on('success', function(file, response) {
+                    if (!window.editedFiles) {
+                        window.editedFiles = []
+                    }
+
+                    window.editedFiles.push({
+                        tempPath: response.tempPath,
+                        originalname: response.originalname,
+                        uploadId: response.uploadId
+                    })
+
+                    const queued = window.dropzoneEdit.getQueuedFiles()
+                    const uploading = window.dropzoneEdit.getUploadingFiles()
+
+                    if (queued.length == 0 && uploading.length == 0) {
+                        window.isUploadingEdit = false;
+                        $('#btnSimpan').prop('disabled', false)
+                        showSuccess('Upload selesai! Klik Simpan untuk menyimpan')
+                    }
+                })
+
+                this.on('error', function(file, message) {
+                    window.isUploadingEdit = false
+                    let errorMsg = typeof message == 'object' ? (message.message || JSON.stringify(message)) : message;
                 })
             }
         })

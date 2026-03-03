@@ -36,6 +36,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->post('files/list', 'FileController::list');
     $routes->get('files/show/(:num)', 'FileController::show/$1');
     $routes->post('files/update', 'FileController::update');
+    $routes->post('files/updateFile', 'FileController::updateFile');
     $routes->post('files/delete', 'FileController::delete');
     $routes->get('files/download/(:num)', 'FileController::download/$1');
     $routes->post('files/chunk-upload', 'FileController::chunkUpload');

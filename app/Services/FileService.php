@@ -69,7 +69,6 @@ class FileService
         $extension = pathinfo($originalName, PATHINFO_EXTENSION);
         $tempFileName = bin2hex(random_bytes(16)) . ($extension ? '.' . $extension : '');
 
-        // Keep merged file in temp folder - don't move to public yet
         $finalTempFile = $tempPath . $tempFileName;
 
         if (!rename($mergedFile, $finalTempFile)) {
@@ -119,7 +118,38 @@ class FileService
 
         return [
             'sukses' => 1,
+            'filename' => $hashName,
+            'filedirectory' => $datePath,
             'pesan' => 'File berhasil disimpan'
+        ];
+    }
+
+    public function moveTempToPublic($tempPath, $originalName)
+    {
+        if (!file_exists($tempPath)) {
+            return ['sukses' => 0, 'pesan' => 'File tidak ditemukan'];
+        }
+
+        $datePath = date('Y/m/d');
+        $publicPath = FCPATH . 'uploads' . DIRECTORY_SEPARATOR . $datePath . DIRECTORY_SEPARATOR;
+
+        if (!is_dir($publicPath)) {
+            mkdir($publicPath, 0775, true);
+        }
+
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+        $hashName = bin2hex(random_bytes(16)) . ($extension ? '.' . $extension : '');
+
+        $finalPublicFile = $publicPath . $hashName;
+
+        if (!rename($tempPath, $finalPublicFile)) {
+            return ['sukses' => 0, 'pesan' => 'Gagal menyimpan file'];
+        }
+
+        return [
+            'sukses' => 1,
+            'filename' => $hashName,
+            'filedirectory' => $datePath
         ];
     }
 
@@ -189,5 +219,45 @@ class FileService
         }
 
         return ['sukses' => 1, 'pesan' => 'File berhasil diupdate'];
+    }
+
+    public function replaceFile($fileId, $newRealName, $files)
+    {
+        $fileModel = new FileModel();
+        $oldFile = $fileModel->find($fileId);
+
+        if (!$oldFile) {
+            return ['sukses' => 0, 'pesan' => 'File tidak ditemukan'];
+        }
+
+        $oldPath = FCPATH . 'uploads' . DIRECTORY_SEPARATOR . $oldFile['filedirectory'] . DIRECTORY_SEPARATOR . $oldFile['filename'];
+
+        if (file_exists($oldPath)) {
+            unlink($oldPath);
+        }
+
+        $newFile = $files[0];
+        $result = $this->moveTempToPublic($newFile['tempPath'], $newFile['originalname']);
+
+        if ($result['sukses'] != 1) {
+            return $result;
+        }
+
+        // Sesudah
+        $fileModel->update($fileId, [
+            'filerealname' => $newRealName,
+            'filename' => $result['filename'],
+            'filedirectory' => $result['filedirectory']
+        ]);
+
+        return ['sukses' => 1, 'pesan' => 'File berhasil diupdate'];
+    }
+
+    public function renameFile($fileId, $newRealName)
+    {
+        $fileModel = new FileModel();
+        $fileModel->update($fileId, ['filerealname' => $newRealName]);
+
+        return ['sukses' => 1, 'pesan' => 'Nama file berhasil diupdate'];
     }
 }

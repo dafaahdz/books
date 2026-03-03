@@ -64,6 +64,28 @@ class FileController extends BaseController
         return $this->response->setJSON($result);
     }
 
+    public function updateFile()
+    {
+        $service = new FileService;
+
+        $fileId = (int) $this->request->getPost('fileid');
+        $newRealName = $this->request->getPost('filerealname');
+        $files = json_decode($this->request->getPost('files'), true);
+
+        if ($files && count($files) > 0) {
+            $result = $service->replaceFile($fileId, $newRealName, $files);
+            if ($result['sukses'] == 1) {
+                if (file_exists($files[0]['tempPath'])) {
+                    unlink($files[0]['tempPath']);
+                }
+            }
+        } else {
+            $result = $service->renameFile($fileId, $newRealName);
+        }
+
+        return $this->response->setJSON($result);
+    }
+
     public function delete()
     {
         $service = new FileService();
@@ -105,7 +127,7 @@ class FileController extends BaseController
             (int)$this->request->getPost('chunkIndex'),
             (int)$this->request->getPost('totalChunks'),
             $this->request->getPost('originalName'),
-            session()->get('userid')
+            session()->get('user_id')
         );
 
         return $this->response->setJSON($result);
@@ -125,12 +147,15 @@ class FileController extends BaseController
             );
             if ($result['sukses'] == 1) {
                 $savedCount++;
+                if (file_exists($file['tempPath'])) {
+                    unlink($file['tempPath']);
+                }
             }
         }
 
         return $this->response->setJSON([
             'sukses' => 1,
-            'pesan' => "$savedCount file berhasil disimpan"
+            'pesan' => "$savedCount file berhasil disimpan",
         ]);
     }
 
