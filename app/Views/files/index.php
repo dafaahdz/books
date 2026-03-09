@@ -94,8 +94,11 @@
 
 
         $('#btnAdd').on('click', function() {
+
+            $('#modalTitle').text('Tambah File')
+
             $('#fileModal').modal('show')
-        });
+        })
 
         $('#btnCloseModal, #btnTutup').on('click', function() {
             $('#fileModal').modal('hide');
@@ -105,12 +108,12 @@
             const dropzone = window.dropzoneAdd
             if (!dropzone) return true;
 
-            const isUploading = dropzone.getUploadingFiles().length > 0
-            const hasQueued = dropzone.getQueuedFiles().length > 0
+            const uploading = dropzone.getUploadingFiles().length
+            const queued = dropzone.getQueuedFiles().length
 
-            if (isUploading || hasQueued) {
+            if (uploading > 0 || queued > 0) {
                 e.preventDefault()
-                showWarning('Mohon tunggu hingga upload selesai')
+                showWarning('Masih ada file yang belum selesai diupload')
                 return false
             }
 
@@ -257,6 +260,12 @@
     })
 
     $('#btnSimpan').on('click', function() {
+
+        if (window.dropzoneAdd.getQueuedFiles().length > 0 && window.dropzoneAdd.getUploadingFiles().length === 0) {
+            window.dropzoneAdd.processQueue()
+            return
+        }
+
         const modalTitle = $('#modalTitle').text()
         const isEditMode = modalTitle == 'Edit File'
 
@@ -348,6 +357,8 @@
     })
 
     function initDropzoneAdd() {
+        console.log('init dropzone called')
+        console.log(document.querySelector('#myDropzone'))
 
         if (window.dropzoneAdd) {
             return
@@ -359,6 +370,7 @@
             chunkSize: 5 * 1024 * 1024,
             maxFilesize: 1000,
             addRemoveLinks: true,
+            autoProcessQueue: false,
             dictDefaultMessage: 'Drop file di sini atau klik untuk upload',
             params: function(files, xhr, chunk) {
                 const fileName = files && files.length > 0 ? files[0].name : '';
@@ -378,42 +390,40 @@
                 }
             },
             init: function() {
-                this.on('addfile', function(file) {
-                    isUploading = true;
-                });
-
-                this.on('removedfile', function(file) {
-                    if (window.uploadedFiles) {
-                        window.uploadedFiles = window.uploadedFiles.filter(function(f) {
-                            return f.uploadId != file.upload.uuid
-                        })
-                    }
-
-                    if (!window.uploadedFiles || window.uploadedFiles.length == 0) {
-                        $('#btnSimpan').prop('disabled', true)
-                    }
-                })
-
                 this.on('success', function(file, response) {
+
                     if (!window.uploadedFiles) {
                         window.uploadedFiles = []
                     }
 
-                    window.uploadedFiles.push({
-                        tempPath: response.tempPath,
-                        originalname: response.originalname,
-                        uploadId: response.uploadId
-                    });
-
-                    const queued = window.dropzoneAdd.getQueuedFiles();
-                    const uploading = window.dropzoneAdd.getUploadingFiles();
-                    if (queued.length === 0 && uploading.length === 0) {
-                        isUploading = false;
-                        hasUploadedFiles = true;
-                        $('#btnSimpan').prop('disabled', false);
-                        showSuccess('Upload selesai! Klik Simpan untuk menyimpan.');
+                    if (response.isLastChunk) {
+                        window.uploadedFiles.push({
+                            uploadId: response.uploadId,
+                            originalname: response.originalname,
+                            tempPath: response.tempPath,
+                            tempFileName: response.tempFileName
+                        })
                     }
                 })
+                this.on('addedfile', function(file) {
+                    console.log('file dropped')
+                    console.log('queued:', this.getQueuedFiles().length)
+
+                    $('#btnSimpan').prop('disabled', false)
+                })
+
+                this.on('removedfile', function(file) {
+
+                    const queued = this.getQueuedFiles().length
+                    const uploading = this.getUploadingFiles().length
+                    const uploaded = window.uploadedFiles ? window.uploadedFiles.length : 0
+
+                    if (queued === 0 && uploading === 0 && uploaded === 0) {
+                        $('#btnSimpan').prop('disabled', true)
+                    }
+
+                })
+
                 this.on('error', function(file, message) {
                     isUploading = false
                     let errorMsg = typeof message === 'object' ? (message.message || JSON.stringify(message)) : message;
@@ -457,8 +467,30 @@
                     originalName: filename
                 }
             },
+            chunksUploaded: function(file, done) {
+
+                if (!window.editedFiles) {
+                    window.editedFiles = []
+                }
+
+                window.editedFiles.push({
+                    uploadId: file.upload.uuid,
+                    originalname: file.name
+                })
+
+                done()
+
+
+                const queued = window.dropzoneEdit.getQueuedFiles()
+                const uploading = window.dropzoneEdit.getUploadingFiles()
+
+                if (queued.length === 0 && uploading.length === 0) {
+                    $('#btnSimpan').prop('disabled', false)
+                    showSuccess('Upload selesai! Klik Simpan untuk menyimpan.')
+                }
+            },
             init: function() {
-                this.on('addfile', function(file) {
+                this.on('addedfile', function(file) {
                     window.isUploading = true
                 })
 
@@ -475,23 +507,18 @@
                 })
 
                 this.on('success', function(file, response) {
-                    if (!window.editedFiles) {
-                        window.editedFiles = []
+
+                    if (!window.uploadedFiles) {
+                        window.uploadedFiles = []
                     }
 
-                    window.editedFiles.push({
-                        tempPath: response.tempPath,
-                        originalname: response.originalname,
-                        uploadId: response.uploadId
-                    })
-
-                    const queued = window.dropzoneEdit.getQueuedFiles()
-                    const uploading = window.dropzoneEdit.getUploadingFiles()
-
-                    if (queued.length == 0 && uploading.length == 0) {
-                        window.isUploadingEdit = false;
-                        $('#btnSimpan').prop('disabled', false)
-                        showSuccess('Upload selesai! Klik Simpan untuk menyimpan')
+                    if (response.isLastChunk) {
+                        window.uploadedFiles.push({
+                            uploadId: response.uploadId,
+                            originalname: response.originalname,
+                            tempPath: response.tempPath,
+                            tempFileName: response.tempFileName
+                        })
                     }
                 })
 
