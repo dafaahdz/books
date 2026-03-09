@@ -51,6 +51,29 @@ class FileController extends BaseController
         return $this->response->setJSON($file);
     }
 
+    public function view($id)
+    {
+        $model = new FileModel();
+        $file = $model->find($id);
+
+        if (!$file) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $path = FCPATH . 'uploads/' . $file['filedirectory'] . '/' . $file['filename'];
+
+        if (!file_exists($path)) {
+            throw \CodeIgniter\Exceptions\PageNotFoundException::forPageNotFound();
+        }
+
+        $mime = mime_content_type($path);
+
+        return $this->response
+            ->setHeader('Content-Type', $mime)
+            ->setHeader('Content-Disposition', 'inline; filename="' . $file['filerealname'] . '"')
+            ->setBody(file_get_contents($path));
+    }
+
     public function update()
     {
         $service = new FileService();

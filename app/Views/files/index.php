@@ -77,8 +77,10 @@
                     searchable: false,
                     render: function(row) {
                         return `
-                            <a href="<?= base_url('files/download') ?>/${row.fileid}" class="btn btn-sm btn-info text-white btn-download">
-                                Download
+                            <a href="<?= base_url('files/view') ?>/${row.fileid}" 
+                            target="_blank"
+                            class="btn btn-sm btn-info text-white">
+                                <i class="fa fa-eye"></i> View
                             </a>
                             <button class="btn btn-sm btn-warning btn-edit" data-id="${row.fileid}">
                                 Edit
