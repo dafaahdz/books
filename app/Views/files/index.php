@@ -132,7 +132,12 @@
 
             $('#modalTitle').text('Tambah File')
 
+            $('#fileModal').modal({
+                backdrop: 'static',
+                keyboard: true
+            })
             $('#fileModal').modal('show')
+
         })
 
         $('#btnCloseModal, #btnTutup').on('click', function() {
@@ -216,7 +221,12 @@
                     $('#currentFileName').text(res.filerealname);
                     $('#currentFilePath').val(res.filedirectory + '/' + res.filename);
                     $('#modalTitle').text('Edit File');
-                    $('#fileModal').modal('show');
+                    $('#fileModal').modal({
+                        backdrop: 'static',
+                        keyboard: true
+                    })
+                    $('#fileModal').modal('show')
+
                 },
                 error: function() {
                     showError('Gagal mengambil data file')
