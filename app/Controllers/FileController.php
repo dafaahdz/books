@@ -182,6 +182,36 @@ class FileController extends BaseController
         ]);
     }
 
+    public function batchDeleteFiles()
+    {
+        $ids = $this->request->getPost('ids');
+
+        if (!$ids || !is_array($ids)) {
+            return $this->response->setJSON([
+                'status' => false,
+                'message' => 'Invalid request'
+            ]);
+        }
+
+        $model = new FileModel();
+
+        $files = $model->whereIn('fileid', $ids)->findAll();
+
+        foreach ($files as $file) {
+            $path = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . $file['filedirectory'] . DIRECTORY_SEPARATOR . $file['filename'];
+
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+
+        $model->whereIn('fileid', $ids)->delete();
+
+        return $this->response->setJSON([
+            'status' => true
+        ]);
+    }
+
     public function cleanupUpload()
     {
         $service = new FileService();

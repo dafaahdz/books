@@ -43,6 +43,7 @@ $routes->group('', ['filter' => 'auth'], function ($routes) {
     $routes->post('files/chunk-upload', 'FileController::chunkUpload');
     $routes->post('files/save-files', 'FileController::saveFiles');
     $routes->post('files/cleanup-upload', 'FileController::cleanupUpload');
+    $routes->post('files/batch-delete', 'FileController::batchDeleteFiles');
 });
 
 $routes->get('testpdf', 'TestPdf::index');

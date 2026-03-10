@@ -7,19 +7,28 @@
     <div class="card shadow-sm">
         <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
             <span class="fw-semibold">Daftar File</span>
-            <button class="btn btn-primary btn-sm" id="btnAdd">
-                + Tambah File
-            </button>
+
+            <div class="d-flex gap-2">
+                <button class="btn btn-danger btn-sm" id="btnDeleteSelected" disabled>
+                    Delete Selected
+                </button>
+
+                <button class="btn btn-primary btn-sm" id="btnAdd">
+                    + Tambah File
+                </button>
+            </div>
         </div>
 
         <div class="card-body">
             <table id="filesTable" class="table table-striped table-bordered w-100">
                 <thead class="table-dark">
-                    <tr>
-                        <th>File Name</th>
-                        <th>Created At</th>
-                        <th>Created By</th>
-                        <th>Aksi</th>
+                    <th width="30">
+                        <input type="checkbox" id="checkAll">
+                    </th>
+                    <th>File Name</th>
+                    <th>Created At</th>
+                    <th>Created By</th>
+                    <th>Aksi</th>
                     </tr>
                 </thead>
             </table>
@@ -39,6 +48,7 @@
 <link rel="stylesheet" href="https://unpkg.com/dropzone@5/dist/min/dropzone.min.css" type="text/css" />
 
 <script>
+    let selectedFiles = new Set()
     let table;
     Dropzone.autoDiscover = false
 
@@ -52,6 +62,15 @@
                 type: 'POST'
             },
             columns: [{
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function(row) {
+                        const checked = selectedFiles.has(row.fileid) ? 'checked' : ''
+                        return `<input type="checkbox" class="file-check" value="${row.fileid}" ${checked}>`
+                    }
+                },
+                {
                     data: 'filerealname'
                 },
                 {
@@ -92,6 +111,20 @@
                     }
                 }
             ]
+        })
+
+        table.on('draw', function() {
+
+            $('.file-check').each(function() {
+
+                const id = $(this).val()
+
+                if (selectedFiles.has(id)) {
+                    $(this).prop('checked', true)
+                }
+
+            })
+
         })
 
 
@@ -257,6 +290,82 @@
                 error: function() {
                     showError('Gagal menghapus file');
                 }
+            })
+        })
+
+        $(document).on('change', '.file-check', function() {
+            const id = $(this).val()
+
+            if ($(this).prop('checked')) {
+                selectedFiles.add(id)
+            } else {
+                selectedFiles.delete(id)
+            }
+            $('#btnDeleteSelected').prop('disabled', selectedFiles.size === 0)
+        })
+
+        $('#checkAll').on('change', function() {
+
+            const checked = $(this).prop('checked')
+
+            $('.file-check').each(function() {
+
+                const id = $(this).val()
+
+                if (checked) {
+                    selectedFiles.add(id)
+                } else {
+                    selectedFiles.delete(id)
+                }
+
+                $(this).prop('checked', checked)
+
+            })
+
+            $('#btnDeleteSelected').prop('disabled', selectedFiles.size === 0)
+
+        })
+
+        $('#btnDeleteSelected').on('click', function() {
+            if (selectedFiles.size === 0) {
+                showWarning('Pilih file dulu')
+                return
+            }
+
+            const ids = Array.from(selectedFiles)
+
+            showConfirm({
+                title: 'Hapus file?',
+                text: `Akan menghapus ${ids.length} file`,
+                confirmButtonText: 'Ya, hapus',
+                confirmButtonColor: '#d33'
+            }).then((result) => {
+
+                if (!result.isConfirmed) return
+
+                $.ajax({
+                    url: "<?= base_url('files/batch-delete') ?>",
+                    method: "POST",
+                    data: {
+                        ids: ids
+                    },
+                    success: function() {
+
+                        showSuccess('File berhasil dihapus')
+
+                        selectedFiles.clear()
+
+                        $('#checkAll').prop('checked', false)
+
+                        $('#btnDeleteSelected').prop('disabled', true)
+
+                        table.ajax.reload(null, false)
+
+                    },
+                    error: function() {
+                        showError('Gagal menghapus file')
+                    }
+                })
             })
         })
     })
