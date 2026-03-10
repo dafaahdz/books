@@ -30,12 +30,28 @@ class FileService
         }
 
         $chunkName = 'chunk_' . $chunkIndex . '.part';
-        $file->move($tempPath, $chunkName);
+        $chunkPath = $tempPath . $chunkName;
 
-        // kalau belum chunk terakhir
-        if ($chunkIndex < $totalChunks - 1) {
+        // jika chunk sudah ada (retry dari Dropzone), abaikan
+        if (!file_exists($chunkPath)) {
+            $file->move($tempPath, $chunkName);
+        }
+
+        // cek jumlah chunk yang sudah diupload
+        $uploadedChunks = glob($tempPath . 'chunk_*.part');
+
+        if (count($uploadedChunks) < $totalChunks) {
             return ['sukses' => 1];
         }
+
+        // lock supaya merge tidak dijalankan 2x
+        $lockFile = $tempPath . 'merge.lock';
+
+        if (file_exists($lockFile)) {
+            return ['sukses' => 1];
+        }
+
+        touch($lockFile);
 
         // =========================
         // MERGE SEMUA CHUNK
@@ -45,10 +61,17 @@ class FileService
         $handle = fopen($mergedFile, 'wb');
 
         for ($i = 0; $i < $totalChunks; $i++) {
+
             $chunkFile = $tempPath . 'chunk_' . $i . '.part';
 
             if (!file_exists($chunkFile)) {
+
                 fclose($handle);
+
+                if (file_exists($lockFile)) {
+                    unlink($lockFile);
+                }
+
                 return [
                     'sukses' => 0,
                     'pesan'  => 'Chunk tidak lengkap'
@@ -56,15 +79,24 @@ class FileService
             }
 
             $chunkHandle = fopen($chunkFile, 'rb');
-            while ($buffer = fread($chunkHandle, 8192)) {
-                fwrite($handle, $buffer);
+
+            while (!feof($chunkHandle)) {
+                fwrite($handle, fread($chunkHandle, 1048576)); // 1MB buffer
             }
+
             fclose($chunkHandle);
         }
 
         fclose($handle);
 
+        // hapus semua chunk
+        foreach (glob($tempPath . 'chunk_*.part') as $chunk) {
+            unlink($chunk);
+        }
 
+        if (file_exists($lockFile)) {
+            unlink($lockFile);
+        }
 
         $extension = pathinfo($originalName, PATHINFO_EXTENSION);
         $tempFileName = bin2hex(random_bytes(16)) . ($extension ? '.' . $extension : '');
@@ -72,17 +104,20 @@ class FileService
         $finalTempFile = $tempPath . $tempFileName;
 
         if (!rename($mergedFile, $finalTempFile)) {
-            return ['sukses' => 0, 'pesan' => 'Gagal menyimpan file'];
+            return [
+                'sukses' => 0,
+                'pesan'  => 'Gagal menyimpan file'
+            ];
         }
 
         return [
-            'sukses'      => 1,
-            'isLastChunk' => true,
-            'uploadId'    => $uploadId,
-            'tempPath'    => $finalTempFile,
+            'sukses'       => 1,
+            'isLastChunk'  => true,
+            'uploadId'     => $uploadId,
+            'tempPath'     => $finalTempFile,
             'tempFileName' => $tempFileName,
             'originalname' => $originalName,
-            'pesan'       => 'Upload berhasil'
+            'pesan'        => 'Upload berhasil'
         ];
     }
 
@@ -167,7 +202,7 @@ class FileService
 
     public function deleteFile($fileId)
     {
-        $file = model(FileModel::class)->find($fileId);
+        $file = $this->model->find($fileId);
 
         if (!$file) {
             return ['sukses' => 0, 'pesan' => 'File tidak ditemukan'];
@@ -179,14 +214,14 @@ class FileService
             unlink($filePath);
         }
 
-        model(FileModel::class)->update($fileId, ['isActive' => false]);
+        $this->model->update($fileId, ['isActive' => false]);
 
         return ['sukses' => 1, 'pesan' => 'File berhasil dihapus'];
     }
 
     public function handleUpdate(int $fileId, ?string $newRealName, $newFile = null): array
     {
-        $file = model(FileModel::class)->find($fileId);
+        $file = $this->model->find($fileId);
 
         if (!$file) {
             return ['sukses' => 0, 'pesan' => 'File tidak ditemukan'];
@@ -215,7 +250,7 @@ class FileService
 
         if (!empty($updateData)) {
             $updateData['updated_by'] = session()->get('user_id');
-            model(FileModel::class)->update($fileId, $updateData);
+            $this->model->update($fileId, $updateData);
         }
 
         return ['sukses' => 1, 'pesan' => 'File berhasil diupdate'];
@@ -223,8 +258,7 @@ class FileService
 
     public function replaceFile($fileId, $newRealName, $files)
     {
-        $fileModel = new FileModel();
-        $oldFile = $fileModel->find($fileId);
+        $oldFile = $this->model->find($fileId);
 
         if (!$oldFile) {
             return ['sukses' => 0, 'pesan' => 'File tidak ditemukan'];
@@ -236,6 +270,10 @@ class FileService
             unlink($oldPath);
         }
 
+        if (empty($files)) {
+            return ['sukses' => 0, 'pesan' => 'File baru tidak ditemukan'];
+        }
+
         $newFile = $files[0];
         $result = $this->moveTempToPublic($newFile['tempPath'], $newFile['originalname']);
 
@@ -244,7 +282,7 @@ class FileService
         }
 
         // Sesudah
-        $fileModel->update($fileId, [
+        $this->model->update($fileId, [
             'filerealname' => $newRealName,
             'filename' => $result['filename'],
             'filedirectory' => $result['filedirectory']
@@ -255,8 +293,7 @@ class FileService
 
     public function renameFile($fileId, $newRealName)
     {
-        $fileModel = new FileModel();
-        $fileModel->update($fileId, ['filerealname' => $newRealName]);
+        $this->model->update($fileId, ['filerealname' => $newRealName]);
 
         return ['sukses' => 1, 'pesan' => 'Nama file berhasil diupdate'];
     }
