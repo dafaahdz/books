@@ -373,6 +373,8 @@
             maxFilesize: 1000,
             addRemoveLinks: true,
             autoProcessQueue: false,
+            parallelUploads: 5,
+            parallelChunkUploads: true,
             dictDefaultMessage: 'Drop file di sini atau klik untuk upload',
             params: function(files, xhr, chunk) {
                 const fileName = files && files.length > 0 ? files[0].name : '';
@@ -423,6 +425,16 @@
                     if (queued === 0 && uploading === 0 && uploaded === 0) {
                         $('#btnSimpan').prop('disabled', true)
                     }
+                })
+
+                this.on('complete', function() {
+
+                    const queued = this.getQueuedFiles().length
+                    const uploading = this.getUploadingFiles().length
+
+                    if (queued > 0 && uploading < this.options.parallelUploads) {
+                        this.processQueue()
+                    }
 
                 })
 
@@ -430,6 +442,17 @@
                     isUploading = false
                     let errorMsg = typeof message === 'object' ? (message.message || JSON.stringify(message)) : message;
                     showError(errorMsg || 'Upload gagal')
+                })
+
+                this.on('queuecomplete', function() {
+
+                    const queued = this.getQueuedFiles().length
+                    const uploading = this.getUploadingFiles().length
+
+                    if (queued === 0 && uploading === 0) {
+                        saveUploadedFiles()
+                    }
+
                 })
             }
         })
@@ -528,6 +551,37 @@
                     window.isUploadingEdit = false
                     let errorMsg = typeof message == 'object' ? (message.message || JSON.stringify(message)) : message;
                 })
+            }
+        })
+    }
+
+    function saveUploadedFiles() {
+
+        if (!window.uploadedFiles || window.uploadedFiles.length === 0) {
+            showWarning('Upload filenya dulu')
+            return
+        }
+
+        $.ajax({
+            url: '<?= base_url('files/save-files') ?>',
+            method: 'POST',
+            data: {
+                files: JSON.stringify(window.uploadedFiles)
+            },
+            success: function() {
+                window.uploadedFiles = []
+                $('#fileModal').modal('hide')
+                table.ajax.reload(null, false)
+
+                if (window.dropzoneAdd) {
+                    window.dropzoneAdd.removeAllFiles()
+                }
+
+                $('#btnSimpan').prop('disabled', true)
+            },
+            error: function(jqXHR) {
+                const msg = jqXHR.responseJSON?.pesan || 'Gagal menyimpan file'
+                showError(msg)
             }
         })
     }
