@@ -286,20 +286,28 @@
         $('#filesTable').on('click', '.btn-delete', function() {
             const id = $(this).data('id')
 
-            if (!confirm('Yakin mau hapus file ini?')) return;
+            showConfirm({
+                title: 'Hapus file?',
+                text: 'Apakah kamu yakin ingin menghapus file ini?',
+                confirmButtonText: 'Ya, hapus',
+                confirmButtonColor: '#d33'
+            }).then((result) => {
+                if (!result.isConfirmed) return
 
-            $.ajax({
-                url: '<?= base_url('files/delete') ?>',
-                method: 'POST',
-                data: {
-                    fileid: id
-                },
-                success: function() {
-                    table.ajax.reload(null, false);
-                },
-                error: function() {
-                    showError('Gagal menghapus file');
-                }
+                $.ajax({
+                    url: '<?= base_url('files/delete') ?>',
+                    method: 'POST',
+                    data: {
+                        fileid: id
+                    },
+                    success: function() {
+                        showSuccess('File berhasil dihapus')
+                        table.ajax.reload(null, false);
+                    },
+                    error: function() {
+                        showError('Gagal menghapus file');
+                    }
+                })
             })
         })
 
@@ -688,15 +696,19 @@
                 files: JSON.stringify(window.uploadedFiles)
             },
             success: function() {
+                const uploadedFilesCount = window.uploadedFiles.length;
                 window.uploadedFiles = []
-                $('#fileModal').modal('hide')
-                table.ajax.reload(null, false)
 
-                if (window.dropzoneAdd) {
-                    window.dropzoneAdd.removeAllFiles()
-                }
+                showSuccess(uploadedFilesCount + ' file berhasil disimpan').then(() => {
+                    $('#fileModal').modal('hide')
+                    if (window.dropzoneAdd) {
+                        window.dropzoneAdd.removeAllFiles()
+                    }
+                    $('#btnSimpan').prop('disabled', true)
+                    $('#fileModal').modal('hide')
+                    table.ajax.reload(null, false)
+                })
 
-                $('#btnSimpan').prop('disabled', true)
             },
             error: function(jqXHR) {
                 const msg = jqXHR.responseJSON?.pesan || 'Gagal menyimpan file'
