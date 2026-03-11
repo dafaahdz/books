@@ -281,20 +281,12 @@ class FileService
             return $result;
         }
 
-        // Sesudah
         $this->model->update($fileId, [
-            'filerealname' => $newRealName,
+            'filerealname' => $files[0]['originalname'],
             'filename' => $result['filename'],
             'filedirectory' => $result['filedirectory']
         ]);
 
         return ['sukses' => 1, 'pesan' => 'File berhasil diupdate'];
-    }
-
-    public function renameFile($fileId, $newRealName)
-    {
-        $this->model->update($fileId, ['filerealname' => $newRealName]);
-
-        return ['sukses' => 1, 'pesan' => 'Nama file berhasil diupdate'];
     }
 }

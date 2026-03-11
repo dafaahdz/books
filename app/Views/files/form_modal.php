@@ -15,14 +15,10 @@
                         <span id="currentFileName" class="d-block fw-bold"></span>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Ganti Nama</label>
-                        <input type="text" class="form-control" id="filerealname" placeholder="Masukkan nama file baru">
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Ganti File (Opsional)</label>
+                        <label class="form-label">Ganti File</label>
                         <div id="myDropzoneEdit" class="dropzone">
                             <div class="dz-message">
-                                <button class="dz-button" type="button">Drop file di sini atau klik untuk upload</button>
+                                <button class="dz-button" type="button">Drop file di sini atau klik untuk update</button>
                             </div>
                         </div>
                     </div>

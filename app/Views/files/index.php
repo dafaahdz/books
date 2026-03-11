@@ -390,7 +390,7 @@
 
     $('#btnSimpan').on('click', function() {
 
-        if (window.dropzoneAdd.getQueuedFiles().length > 0 && window.dropzoneAdd.getUploadingFiles().length === 0) {
+        if (window.dropzoneAdd && window.dropzoneAdd.getQueuedFiles().length > 0 && window.dropzoneAdd.getUploadingFiles().length === 0) {
             window.dropzoneAdd.processQueue()
             return
         }
@@ -410,12 +410,14 @@
             }
 
             if (window.editedFiles && window.editedFiles.length > 0) {
+                const newFileName = window.editedFiles[0].originalname
+
                 $.ajax({
                     url: '<?= base_url('files/updateFile') ?>',
                     method: 'POST',
                     data: {
                         fileid: $('#fileId').val(),
-                        filerealname: $('#filerealname').val(),
+                        filerealname: newFileName,
                         files: JSON.stringify(window.editedFiles)
                     },
                     success: function() {
@@ -426,23 +428,6 @@
                     },
                     error: function() {
                         showError('Gagal update file')
-                    }
-                })
-            } else {
-                $.ajax({
-                    url: '<?= base_url('files/update') ?>',
-                    method: 'POST',
-                    data: {
-                        fileid: $('#fileId').val(),
-                        filerealname: $('#filerealname').val(),
-                    },
-                    success: function() {
-                        $('#fileModal').modal('hide')
-                        table.ajax.reload(null, false)
-                    },
-
-                    error: function() {
-                        showError('Gagal update nama fike')
                     }
                 })
             }
@@ -619,31 +604,16 @@
                     originalName: filename
                 }
             },
-            chunksUploaded: function(file, done) {
-
-                if (!window.editedFiles) {
-                    window.editedFiles = []
-                }
-
-                window.editedFiles.push({
-                    uploadId: file.upload.uuid,
-                    originalname: file.name
-                })
-
-                done()
-
-
-                const queued = window.dropzoneEdit.getQueuedFiles()
-                const uploading = window.dropzoneEdit.getUploadingFiles()
-
-                if (queued.length === 0 && uploading.length === 0) {
-                    $('#btnSimpan').prop('disabled', false)
-                    showSuccess('Upload selesai! Klik Simpan untuk menyimpan.')
-                }
-            },
             init: function() {
                 this.on('addedfile', function(file) {
-                    window.isUploading = true
+                    if (this.options.maxFiles && this.files.length > this.options.maxFiles) {
+                        const fileToRemove = this.files[this.files.length - 1]
+                        this.removeFile(fileToRemove)
+                        showWarning('Tidak bisa upload lebih dari ' + this.options.maxFiles + ' file')
+                        return
+                    }
+
+                    $('#btnSimpan').prop('disabled', false)
                 })
 
                 this.on('removedfile', function(file) {
@@ -653,19 +623,23 @@
                         })
                     }
 
-                    if (!window.editedFiles || window.editedFiles.length == 0) {
+                    const queued = this.getQueuedFiles().length
+                    const uploading = this.getUploadingFiles().length
+                    const uploaded = window.editedFiles ? window.editedFiles.length : 0
+
+                    if (queued === 0 && uploading === 0 && uploaded === 0) {
                         $('#btnSimpan').prop('disabled', true)
                     }
                 })
 
                 this.on('success', function(file, response) {
 
-                    if (!window.uploadedFiles) {
-                        window.uploadedFiles = []
+                    if (!window.editedFiles) {
+                        window.editedFiles = []
                     }
 
                     if (response.isLastChunk) {
-                        window.uploadedFiles.push({
+                        window.editedFiles.push({
                             uploadId: response.uploadId,
                             originalname: response.originalname,
                             tempPath: response.tempPath,
@@ -674,9 +648,28 @@
                     }
                 })
 
+                this.on('complete', function() {
+                    const queued = this.getQueuedFiles().length
+                    const uploading = this.getUploadingFiles().length
+
+                    if (queued > 0 && uploading < this.options.parallelUploads) {
+                        this.processQueue()
+                    }
+                })
+
                 this.on('error', function(file, message) {
-                    window.isUploadingEdit = false
-                    let errorMsg = typeof message == 'object' ? (message.message || JSON.stringify(message)) : message;
+                    isUploading = false
+                    let errorMsg = typeof message === 'object' ? (message.message || JSON.stringify(message)) : message;
+                    showError(errorMsg || 'Upload gagal')
+                })
+
+                this.on('queuecomplete', function() {
+                    const queued = this.getQueuedFiles().length
+                    const uploading = this.getUploadingFiles().length
+
+                    if (queued == 0 && uploading == 0) {
+
+                    }
                 })
             }
         })
