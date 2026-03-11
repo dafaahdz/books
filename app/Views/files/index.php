@@ -492,16 +492,25 @@
                 const fileName = files && files.length > 0 ? files[0].name : '';
                 const uploadId = chunk ? chunk.file.upload.uuid : files[0].upload.uuid;
 
+                let totalChunks = 0;
+                if (chunk && chunk.file && chunk.file.upload && chunk.file.upload.totalChunkCount) {
+                    totalChunks = chunk.file.upload.totalChunkCount;
+                } else if (files && files.length > 0) {
+                    totalChunks = Math.ceil(files[0].size / (5 * 1024 * 1024));
+                }
+
                 if (chunk) {
                     return {
                         uploadId: uploadId,
                         chunkIndex: chunk.index,
-                        totalChunks: chunk.file.upload.totalChunkCount,
+                        totalChunks: totalChunks,
                         originalName: fileName
                     }
                 }
                 return {
                     uploadId: uploadId,
+                    chunkIndex: 0,
+                    totalChunks: totalChunks,
                     originalName: fileName
                 }
             },
@@ -591,16 +600,25 @@
                 const filename = files && files.length > 0 ? files[0].name : ''
                 const uploadId = chunk ? chunk.file.upload.uuid : files[0].upload.uuid
 
+                let totalChunks = 0;
+                if (chunk && chunk.file && chunk.file.upload && chunk.file.upload.totalChunkCount) {
+                    totalChunks = chunk.file.upload.totalChunkCount;
+                } else if (files && files.length > 0) {
+                    totalChunks = Math.ceil(files[0].size / (5 * 1024 * 1024));
+                }
+
                 if (chunk) {
                     return {
                         uploadId: uploadId,
                         chunkIndex: chunk.index,
-                        totalChunks: chunk.file.upload.totalChunkCount,
+                        totalChunks: totalChunks,
                         originalName: filename
                     }
                 }
                 return {
                     uploadId: uploadId,
+                    chunkIndex: 0,
+                    totalChunks: totalChunks,
                     originalName: filename
                 }
             },

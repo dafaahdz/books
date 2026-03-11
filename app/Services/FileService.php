@@ -143,6 +143,11 @@ class FileService
             return ['sukses' => 0, 'pesan' => 'Gagal menyimpan file'];
         }
 
+        if (filesize($finalPublicFile) === 0) {
+            unlink($finalPublicFile);
+            return ['sukses' => 0, 'pesan' => 'File corrupt, size 0'];
+        }
+
         $this->model->insert([
             'filename' => $hashName,
             'filerealname'  => $originalName,
