@@ -377,7 +377,7 @@
 
                         $('#btnDeleteSelected').prop('disabled', true)
 
-                        table.ajax.reload(null, false)
+                        table.ajax.reload(null, true)
 
                     },
                     error: function() {
@@ -717,7 +717,7 @@
                     }
                     $('#btnSimpan').prop('disabled', true)
                     $('#fileModal').modal('hide')
-                    table.ajax.reload(null, false)
+                    table.ajax.reload(null, true)
                 })
 
             },
