@@ -69,9 +69,9 @@ class FileModel extends Model
         }
 
         $columnMap = [
-            0 => 'f.filerealname',
-            1 => 'f.created_at',
-            2 => 'u.username'
+            1 => 'f.filerealname',
+            2 => 'f.created_at',
+            3 => 'u.username'
         ];
 
         $orderColumn = $columnMap[$orderColumn] ?? 'f.created_at';

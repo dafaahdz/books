@@ -193,19 +193,31 @@ class FileController extends BaseController
             ]);
         }
 
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON([
+                'status' => false,
+                'message' => 'User tidak terautentikasi'
+            ]);
+        }
+
         $model = new FileModel();
 
         $files = $model->whereIn('fileid', $ids)->findAll();
 
         foreach ($files as $file) {
-            $path = WRITEPATH . 'uploads' . DIRECTORY_SEPARATOR . $file['filedirectory'] . DIRECTORY_SEPARATOR . $file['filename'];
+            $filePath = FCPATH . 'uploads/' . $file['filedirectory'] . '/' . $file['filename'];
 
-            if (file_exists($path)) {
-                unlink($path);
+            if (file_exists($filePath)) {
+                unlink($filePath);
             }
         }
 
-        $model->whereIn('fileid', $ids)->delete();
+        $model->whereIn('fileid', $ids)->update(null, [
+            'isActive' => false,
+            'updated_by' => $userId,
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
 
         return $this->response->setJSON([
             'status' => true
